@@ -1,0 +1,29 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependencies & build output
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Env files (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Claude Code local runtime state
+.claude/*.lock
+
+# Editor/OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
