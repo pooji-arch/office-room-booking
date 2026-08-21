@@ -7,8 +7,8 @@ export const roomKeys = {
   list: (params: ListRoomsParams) => ["rooms", "list", params] as const,
   detail: (id: string) => ["rooms", "detail", id] as const,
   locations: ["rooms", "locations"] as const,
-  availability: (id: string, date: string) =>
-    ["rooms", "availability", id, date] as const,
+  availability: (id: string, date: string, excludeBookingId?: string) =>
+    ["rooms", "availability", id, date, excludeBookingId ?? null] as const,
 }
 
 export function useRooms(params: ListRoomsParams = {}) {
@@ -33,10 +33,14 @@ export function useRoomLocations() {
   })
 }
 
-export function useRoomAvailability(id: string | undefined, date: string | undefined) {
+export function useRoomAvailability(
+  id: string | undefined,
+  date: string | undefined,
+  excludeBookingId?: string
+) {
   return useQuery({
-    queryKey: roomKeys.availability(id ?? "", date ?? ""),
-    queryFn: () => roomsService.getRoomAvailability(id!, date!),
+    queryKey: roomKeys.availability(id ?? "", date ?? "", excludeBookingId),
+    queryFn: () => roomsService.getRoomAvailability(id!, date!, excludeBookingId),
     enabled: !!id && !!date,
   })
 }

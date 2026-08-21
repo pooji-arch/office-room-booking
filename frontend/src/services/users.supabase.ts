@@ -30,8 +30,10 @@ function mapUser(row: ProfileRow): User {
   }
 }
 
+// Deployed in Supabase as "super-processor" (named that way when created
+// through the dashboard UI, rather than "admin-users" as in the source tree).
 async function callAdminUsersFunction<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("admin-users", { body })
+  const { data, error } = await supabase.functions.invoke("super-processor", { body })
   if (error) throw new Error(error.message)
   if (data?.error) throw new Error(data.error)
   return data as T

@@ -12,6 +12,7 @@ export const bookingKeys = {
   all: ["bookings"] as const,
   list: (params: ListBookingsParams) => ["bookings", "list", params] as const,
   detail: (id: string) => ["bookings", "detail", id] as const,
+  history: (id: string) => ["bookings", "history", id] as const,
 }
 
 function invalidateBookingRelated(qc: ReturnType<typeof useQueryClient>) {
@@ -30,6 +31,14 @@ export function useBooking(id: string | undefined) {
   return useQuery({
     queryKey: bookingKeys.detail(id ?? ""),
     queryFn: () => bookingsService.getBooking(id!),
+    enabled: !!id,
+  })
+}
+
+export function useBookingHistory(id: string | undefined) {
+  return useQuery({
+    queryKey: bookingKeys.history(id ?? ""),
+    queryFn: () => bookingsService.getBookingHistory(id!),
     enabled: !!id,
   })
 }

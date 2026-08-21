@@ -1,6 +1,7 @@
-export const BUSINESS_HOURS_START = "08:00"
+import type { BookedRange } from "@/types"
+
+export const BUSINESS_HOURS_START = "09:00"
 export const BUSINESS_HOURS_END = "18:00"
-export const SLOT_DURATION_MINUTES = 60
 
 export function toMinutes(hhmm: string) {
   const [h, m] = hhmm.split(":").map(Number)
@@ -13,12 +14,32 @@ export function toHHmm(minutes: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
 }
 
-export function generateBusinessHourSlots(): { start: string; end: string }[] {
-  const start = toMinutes(BUSINESS_HOURS_START)
-  const end = toMinutes(BUSINESS_HOURS_END)
-  const slots: { start: string; end: string }[] = []
-  for (let t = start; t < end; t += SLOT_DURATION_MINUTES) {
-    slots.push({ start: toHHmm(t), end: toHHmm(t + SLOT_DURATION_MINUTES) })
-  }
-  return slots
+// Half-open-interval overlap ([start,end)) — matches the DB's tsrange
+// EXCLUDE constraint exactly, so touching-not-overlapping ranges (one
+// ending exactly when another starts) are correctly treated as free.
+export function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string) {
+  return aStart < bEnd && aEnd > bStart
+}
+
+export function findConflict(bookedRanges: BookedRange[], start: string, end: string) {
+  return bookedRanges.find((r) => rangesOverlap(start, end, r.start, r.end))
+}
+
+function todayInputValue() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+function nowMinutes() {
+  const now = new Date()
+  return now.getHours() * 60 + now.getMinutes()
+}
+
+// A time is unbookable once it's already passed — used to block past
+// start times in every booking/reschedule/reassign time input.
+export function isSlotInPast(date: string, slot: { start: string }) {
+  const today = todayInputValue()
+  if (date < today) return true
+  if (date > today) return false
+  return toMinutes(slot.start) <= nowMinutes()
 }

@@ -2,6 +2,7 @@ import type {
   AuthUser,
   Booking,
   BookingBucket,
+  BookingHistoryEntry,
   BookingStatus,
   LoginResult,
   PaginatedResult,
@@ -49,7 +50,7 @@ export interface RoomsService {
   updateRoom(id: string, input: Partial<RoomInput>): Promise<Room>
   deleteRoom(id: string): Promise<Room>
   listRoomLocations(): Promise<string[]>
-  getRoomAvailability(id: string, date: string): Promise<RoomAvailability>
+  getRoomAvailability(id: string, date: string, excludeBookingId?: string): Promise<RoomAvailability>
 }
 
 // ---- Bookings ----
@@ -98,6 +99,7 @@ export interface BookingsService {
   reassignBooking(id: string, input: ReassignBookingInput): Promise<Booking>
   rescheduleBooking(id: string, input: RescheduleBookingInput): Promise<Booking>
   cancelBooking(id: string, reason?: string): Promise<Booking>
+  getBookingHistory(bookingId: string): Promise<BookingHistoryEntry[]>
 }
 
 // ---- Users ----

@@ -4,7 +4,9 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { BookingCalendarGrid } from "@/components/shared/BookingCalendarGrid"
+import { BookingDetailsDialogBody } from "@/components/shared/BookingDetailsDialogBody"
 import { useBookings } from "@/hooks/useBookings"
 import { useRoom } from "@/hooks/useRooms"
 import { useAuth } from "@/hooks/useAuth"
@@ -18,6 +20,7 @@ export function RoomCalendarViewPage() {
   const { user } = useAuth()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [view, setView] = useState<"week" | "day">("week")
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
 
   const { data: room, isLoading: isLoadingRoom } = useRoom(id)
   const days = useMemo(
@@ -39,9 +42,7 @@ export function RoomCalendarViewPage() {
   }
 
   function handleBookingClick(booking: Booking) {
-    if (booking.bookedBy.id === user?.id) {
-      navigate(`/my-bookings/${booking.id}`)
-    }
+    setSelectedBookingId(booking.id)
   }
 
   const rangeLabel =
@@ -78,10 +79,13 @@ export function RoomCalendarViewPage() {
           <Card>
             <CardContent className="space-y-1.5 pt-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <span className="size-2.5 rounded-full bg-primary" /> Confirmed
+                <span className="size-2.5 rounded-full bg-success" /> Confirmed
               </div>
               <div className="flex items-center gap-2">
-                <span className="size-2.5 rounded-full bg-warning" /> Pending
+                <span className="size-2.5 rounded-full bg-primary" /> Completed
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-warning" /> Rescheduled
               </div>
               <div className="flex items-center gap-2">
                 <span className="size-2.5 rounded-full bg-muted-foreground/50" /> Cancelled
@@ -124,9 +128,18 @@ export function RoomCalendarViewPage() {
             bookings={data?.data ?? []}
             onBookingClick={handleBookingClick}
             emptyHint="No bookings in this range."
+            currentUserId={user?.id}
           />
         </div>
       </div>
+
+      <Dialog open={!!selectedBookingId} onOpenChange={(o) => !o && setSelectedBookingId(null)}>
+        <DialogContent className="sm:max-w-xl">
+          {selectedBookingId && (
+            <BookingDetailsDialogBody key={selectedBookingId} bookingId={selectedBookingId} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

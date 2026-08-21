@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { DoorOpen, Search } from "lucide-react"
+import { DoorOpen, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -13,8 +13,7 @@ import {
 import { EmptyState } from "@/components/shared/EmptyState"
 import { RoomCard } from "@/components/shared/RoomCard"
 import { useRooms } from "@/hooks/useRooms"
-import { generateBusinessHourSlots } from "@/lib/business-hours"
-import { formatTime12h } from "@/lib/format"
+import { BUSINESS_HOURS_END, BUSINESS_HOURS_START } from "@/lib/business-hours"
 
 const CAPACITY_OPTIONS = [
   { value: "any", label: "Any Capacity" },
@@ -25,8 +24,6 @@ const CAPACITY_OPTIONS = [
   { value: "20", label: "20+ people" },
 ]
 
-const TIME_SLOTS = generateBusinessHourSlots()
-
 interface Filters {
   search: string
   date: string
@@ -34,17 +31,31 @@ interface Filters {
   capacity: string
 }
 
-const defaultFilters: Filters = { search: "", date: "", time: "any", capacity: "any" }
+const defaultFilters: Filters = { search: "", date: "", time: "", capacity: "any" }
 
 export function HomePage() {
   const navigate = useNavigate()
   const [draft, setDraft] = useState<Filters>(defaultFilters)
   const [applied, setApplied] = useState<Filters>(defaultFilters)
 
-  const { data, isLoading } = useRooms({ status: "AVAILABLE", search: applied.search, pageSize: 50 })
+  // Unavailable rooms are hidden entirely; Maintenance rooms still show (with
+  // a badge) but can't be booked — so only the room-status filter is client
+  // side here, not server side.
+  const { data, isLoading } = useRooms({ search: applied.search, pageSize: 50 })
 
   const minCapacity = applied.capacity === "any" ? 0 : Number(applied.capacity)
-  const rooms = (data?.data ?? []).filter((r) => r.capacity >= minCapacity)
+  const rooms = (data?.data ?? []).filter(
+    (r) => r.status !== "UNAVAILABLE" && r.capacity >= minCapacity
+  )
+  function isDefault(f: Filters) {
+    return f.search === "" && f.date === "" && f.time === "" && f.capacity === "any"
+  }
+  const hasActiveFilters = !isDefault(draft) || !isDefault(applied)
+
+  function clearFilters() {
+    setDraft(defaultFilters)
+    setApplied(defaultFilters)
+  }
 
   function handleSearch() {
     setApplied(draft)
@@ -53,7 +64,7 @@ export function HomePage() {
   function viewDetails(roomId: string) {
     const params = new URLSearchParams()
     if (applied.date) params.set("date", applied.date)
-    if (applied.time !== "any") params.set("time", applied.time)
+    if (applied.time) params.set("time", applied.time)
     const qs = params.toString()
     navigate(`/rooms/${roomId}${qs ? `?${qs}` : ""}`)
   }
@@ -76,31 +87,47 @@ export function HomePage() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">Date</p>
-            <Input
-              type="date"
-              value={draft.date}
-              onChange={(e) => setDraft((f) => ({ ...f, date: e.target.value }))}
-              className="w-[150px]"
-            />
+            <div className="relative">
+              <Input
+                type="date"
+                value={draft.date}
+                onChange={(e) => setDraft((f) => ({ ...f, date: e.target.value }))}
+                className="w-[150px] pr-7"
+              />
+              {draft.date && (
+                <button
+                  type="button"
+                  aria-label="Clear date"
+                  onClick={() => setDraft((f) => ({ ...f, date: "" }))}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">Time</p>
-            <Select
-              value={draft.time}
-              onValueChange={(v) => setDraft((f) => ({ ...f, time: v }))}
-            >
-              <SelectTrigger className="w-[130px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="any">Any Time</SelectItem>
-                {TIME_SLOTS.map((s) => (
-                  <SelectItem key={s.start} value={s.start}>
-                    {formatTime12h(s.start)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <Input
+                type="time"
+                min={BUSINESS_HOURS_START}
+                max={BUSINESS_HOURS_END}
+                value={draft.time}
+                onChange={(e) => setDraft((f) => ({ ...f, time: e.target.value }))}
+                className="w-[130px] pr-7"
+              />
+              {draft.time && (
+                <button
+                  type="button"
+                  aria-label="Clear time"
+                  onClick={() => setDraft((f) => ({ ...f, time: "" }))}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">Capacity</p>
@@ -124,6 +151,12 @@ export function HomePage() {
             <Search className="size-4" />
             Search
           </Button>
+          {hasActiveFilters && (
+            <Button type="button" variant="ghost" onClick={clearFilters}>
+              <X className="size-4" />
+              Clear Filters
+            </Button>
+          )}
         </div>
       </div>
 

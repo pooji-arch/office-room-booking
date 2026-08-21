@@ -1,8 +1,25 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { createRemoteJWKSet, jwtVerify } from "npm:jose@5"
+
+// Bump this string on every edit. If a test response doesn't show this exact
+// value, the deploy didn't take — that's the whole point of it existing.
+const VERSION = "v6-jwks-local-verify"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+}
+
+// This project uses Supabase's newer asymmetric (ES256) JWT signing keys.
+// Their whole point is that tokens verify locally against the public JWKS —
+// no round trip, and critically, no dependency on the server-side session
+// lookup that /auth/v1/user and supabase-js's getUser() both do, which was
+// failing with "session_not_found" for this project even on brand-new
+// tokens. Verifying the signature locally sidesteps that entirely.
+let jwks: ReturnType<typeof createRemoteJWKSet> | null = null
+function getJwks(supabaseUrl: string) {
+  if (!jwks) jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`))
+  return jwks
 }
 
 function tempPassword() {
@@ -11,7 +28,9 @@ function tempPassword() {
 }
 
 function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
+  const withVersion =
+    body && typeof body === "object" ? { ...body, _version: VERSION } : body
+  return new Response(JSON.stringify(withVersion), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
@@ -23,20 +42,27 @@ Deno.serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  // Prefer an explicitly-set SB_SECRET_KEY secret (see deploy notes) over the
+  // auto-injected SUPABASE_SERVICE_ROLE_KEY, which has been reported stale
+  // on projects using the newer sb_secret_/sb_publishable_ key format.
+  const serviceRoleKey = Deno.env.get("SB_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 
   const authHeader = req.headers.get("Authorization")
   if (!authHeader) return json({ error: "Unauthorized" }, 401)
-
-  const callerClient = createClient(supabaseUrl, serviceRoleKey, {
-    global: { headers: { Authorization: authHeader } },
-  })
-  const {
-    data: { user: caller },
-  } = await callerClient.auth.getUser()
-  if (!caller) return json({ error: "Unauthorized" }, 401)
+  const jwt = authHeader.replace(/^Bearer\s+/i, "")
 
   const admin = createClient(supabaseUrl, serviceRoleKey)
+
+  let callerId: string
+  try {
+    const { payload } = await jwtVerify(jwt, getJwks(supabaseUrl), {
+      issuer: `${supabaseUrl}/auth/v1`,
+    })
+    callerId = payload.sub!
+  } catch (err) {
+    return json({ error: "Unauthorized", debug: err instanceof Error ? err.message : String(err) }, 401)
+  }
+  const caller = { id: callerId }
 
   const { data: callerProfile } = await admin
     .from("profiles")

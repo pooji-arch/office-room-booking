@@ -1,7 +1,7 @@
 export type Role = "ADMIN" | "USER"
 export type UserStatus = "ACTIVE" | "INACTIVE"
 export type RoomStatus = "AVAILABLE" | "MAINTENANCE" | "UNAVAILABLE"
-export type BookingStatus = "CONFIRMED" | "PENDING" | "CANCELLED"
+export type BookingStatus = "CONFIRMED" | "CANCELLED"
 
 export type BookingBucket =
   | "all"
@@ -76,11 +76,9 @@ export interface PaginatedResult<T> {
   pagination: PaginationMeta
 }
 
-export interface SlotAvailability {
+export interface BookedRange {
   start: string
   end: string
-  available: boolean
-  bookingId?: string
 }
 
 export interface RoomAvailability {
@@ -88,8 +86,26 @@ export interface RoomAvailability {
   roomId: string
   roomBookable: boolean
   businessHours: { start: string; end: string }
-  slotDurationMinutes: number
-  slots: SlotAvailability[]
+  bookedRanges: BookedRange[]
+}
+
+export interface BookingHistoryEntry {
+  id: string
+  bookingId: string
+  previousRoomName: string
+  previousRoomLocation: string
+  previousDate: string
+  previousStartTime: string
+  previousEndTime: string
+  newRoomName: string
+  newRoomLocation: string
+  newDate: string
+  newStartTime: string
+  newEndTime: string
+  reason?: string
+  changedByIsAdmin: boolean
+  changedByName: string
+  changedAt: string
 }
 
 export interface AuthUser extends User {}

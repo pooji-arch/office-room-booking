@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient"
-import type { Booking } from "@/types"
+import type { Booking, BookingHistoryEntry } from "@/types"
 import type {
   BookingsService,
   CreateBookingInput,
@@ -97,7 +97,56 @@ function friendlyError(error: { code?: string; message: string }): Error {
   if (error.code === "23P01") {
     return new Error("Room already booked for an overlapping time.")
   }
+  if (error.code === "P0011") {
+    return new Error("You can't book or move a booking into the past.")
+  }
+  if (error.code === "P0012") {
+    return new Error("Bookings must be within business hours (09:00-18:00).")
+  }
+  if (error.code === "P0013") {
+    return new Error("End time must be after start time.")
+  }
   return new Error(error.message)
+}
+
+interface BookingHistoryRow {
+  id: string
+  booking_id: string
+  previous_room_name: string
+  previous_room_location: string
+  previous_date: string
+  previous_start_time: string
+  previous_end_time: string
+  new_room_name: string
+  new_room_location: string
+  new_date: string
+  new_start_time: string
+  new_end_time: string
+  reason: string | null
+  changed_by_is_admin: boolean
+  changed_by_name: string
+  changed_at: string
+}
+
+function mapBookingHistory(row: BookingHistoryRow): BookingHistoryEntry {
+  return {
+    id: row.id,
+    bookingId: row.booking_id,
+    previousRoomName: row.previous_room_name,
+    previousRoomLocation: row.previous_room_location,
+    previousDate: row.previous_date,
+    previousStartTime: row.previous_start_time.slice(0, 5),
+    previousEndTime: row.previous_end_time.slice(0, 5),
+    newRoomName: row.new_room_name,
+    newRoomLocation: row.new_room_location,
+    newDate: row.new_date,
+    newStartTime: row.new_start_time.slice(0, 5),
+    newEndTime: row.new_end_time.slice(0, 5),
+    reason: row.reason ?? undefined,
+    changedByIsAdmin: row.changed_by_is_admin,
+    changedByName: row.changed_by_name,
+    changedAt: row.changed_at,
+  }
 }
 
 export const supabaseBookingsService: BookingsService = {
@@ -226,5 +275,15 @@ export const supabaseBookingsService: BookingsService = {
       .single()
     if (error) throw friendlyError(error)
     return mapBooking(data as BookingRow)
+  },
+
+  async getBookingHistory(bookingId) {
+    const { data, error } = await supabase
+      .from("booking_history")
+      .select("*")
+      .eq("booking_id", bookingId)
+      .order("changed_at", { ascending: false })
+    if (error) throw friendlyError(error)
+    return (data as BookingHistoryRow[] | null ?? []).map(mapBookingHistory)
   },
 }

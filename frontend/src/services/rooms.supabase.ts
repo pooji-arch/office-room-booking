@@ -1,11 +1,6 @@
 import { supabase } from "./supabaseClient"
 import type { Room, RoomAvailability } from "@/types"
-import {
-  BUSINESS_HOURS_END,
-  BUSINESS_HOURS_START,
-  SLOT_DURATION_MINUTES,
-  generateBusinessHourSlots,
-} from "@/lib/business-hours"
+import { BUSINESS_HOURS_END, BUSINESS_HOURS_START } from "@/lib/business-hours"
 import type { ListRoomsParams, RoomInput, RoomsService } from "./types"
 
 const BUCKET = "room-images"
@@ -113,33 +108,30 @@ export const supabaseRoomsService: RoomsService = {
     return Array.from(new Set((data ?? []).map((r) => r.location as string))).sort()
   },
 
-  async getRoomAvailability(id, date) {
+  async getRoomAvailability(id, date, excludeBookingId) {
     const { data: roomRow } = await supabase.from("rooms").select("*").eq("id", id).maybeSingle()
     const room = roomRow ? mapRoom(roomRow as RoomRow) : null
     const roomBookable = !!room && !room.deletedAt && room.status === "AVAILABLE"
 
-    const { data: bookings, error } = await supabase
+    let bookingsQuery = supabase
       .from("bookings")
       .select("id, start_time, end_time")
       .eq("room_id", id)
       .eq("date", date)
       .neq("status", "CANCELLED")
+    if (excludeBookingId) bookingsQuery = bookingsQuery.neq("id", excludeBookingId)
+    const { data: bookings, error } = await bookingsQuery
     if (error) throw new Error(error.message)
 
-    const slots = generateBusinessHourSlots()
     const result: RoomAvailability = {
       date,
       roomId: id,
       roomBookable,
       businessHours: { start: BUSINESS_HOURS_START, end: BUSINESS_HOURS_END },
-      slotDurationMinutes: SLOT_DURATION_MINUTES,
-      slots: slots.map((s) => {
-        if (!roomBookable) return { ...s, available: false }
-        const conflict = (bookings ?? []).find(
-          (b) => (b.start_time as string).slice(0, 5) < s.end && (b.end_time as string).slice(0, 5) > s.start
-        )
-        return { ...s, available: !conflict, bookingId: conflict?.id }
-      }),
+      bookedRanges: (bookings ?? []).map((b) => ({
+        start: (b.start_time as string).slice(0, 5),
+        end: (b.end_time as string).slice(0, 5),
+      })),
     }
     return result
   },

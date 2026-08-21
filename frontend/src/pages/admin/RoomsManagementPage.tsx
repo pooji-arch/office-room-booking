@@ -69,7 +69,7 @@ export function RoomsManagementPage() {
             description="Try a different search, or add a new room to get started."
           />
         ) : (
-          <Table>
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Room Name</TableHead>

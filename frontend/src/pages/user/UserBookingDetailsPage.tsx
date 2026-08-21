@@ -1,40 +1,20 @@
-import { useState } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
+import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { ArrowLeft, Loader2, SearchX } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form"
+import { Calendar } from "@/components/ui/calendar"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { BookingDetailsCard } from "@/components/shared/BookingDetailsCard"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { TimeRangeInput } from "@/components/shared/TimeRangeInput"
 import { useBooking, useCancelBooking, useRescheduleBooking } from "@/hooks/useBookings"
+import { useRoomAvailability } from "@/hooks/useRooms"
 import { useAuth } from "@/hooks/useAuth"
-import { generateBusinessHourSlots } from "@/lib/business-hours"
 import { bookingDisplayStatus } from "@/lib/booking-buckets"
-import { formatTime12h } from "@/lib/format"
-
-const rescheduleSchema = z.object({
-  date: z.string().min(1, "Date is required"),
-  startTime: z.string().min(1, "Start time is required"),
-  endTime: z.string().min(1, "End time is required"),
-})
-
-type RescheduleValues = z.infer<typeof rescheduleSchema>
-
-const slots = generateBusinessHourSlots()
+import { formatDateLong, parseDateInputValue, toDateInputValue } from "@/lib/format"
 
 export function UserBookingDetailsPage() {
   const { id } = useParams()
@@ -45,11 +25,20 @@ export function UserBookingDetailsPage() {
   const rescheduleBooking = useRescheduleBooking()
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [showReschedule, setShowReschedule] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null)
 
-  const form = useForm<RescheduleValues>({
-    resolver: zodResolver(rescheduleSchema),
-    defaultValues: { date: "", startTime: "", endTime: "" },
-  })
+  const dateStr = selectedDate ? toDateInputValue(selectedDate) : (booking?.date ?? "")
+  const { data: availability, isLoading: isLoadingSlots } = useRoomAvailability(
+    showReschedule ? booking?.roomId : undefined,
+    showReschedule ? dateStr : undefined,
+    booking?.id
+  )
+
+  useEffect(() => {
+    setSelectedSlot(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateStr])
 
   if (isLoading) {
     return <Loader2 className="size-6 animate-spin text-primary" />
@@ -82,14 +71,18 @@ export function UserBookingDetailsPage() {
 
   function openReschedule() {
     if (!booking) return
-    form.reset({ date: booking.date, startTime: booking.startTime, endTime: booking.endTime })
+    setSelectedDate(parseDateInputValue(booking.date))
+    setSelectedSlot({ start: booking.startTime, end: booking.endTime })
     setShowReschedule(true)
   }
 
-  async function onReschedule(values: RescheduleValues) {
-    if (!booking) return
+  async function onReschedule() {
+    if (!booking || !selectedSlot) return
     try {
-      await rescheduleBooking.mutateAsync({ id: booking.id, input: values })
+      await rescheduleBooking.mutateAsync({
+        id: booking.id,
+        input: { date: dateStr, startTime: selectedSlot.start, endTime: selectedSlot.end },
+      })
       toast.success("Booking rescheduled")
       setShowReschedule(false)
     } catch (err) {
@@ -133,80 +126,48 @@ export function UserBookingDetailsPage() {
             <CardHeader>
               <CardTitle className="text-base">Reschedule Booking</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onReschedule)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
+            <CardContent className="space-y-4">
+              <Card className="py-2">
+                <CardContent className="px-2">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate ?? parseDateInputValue(booking.date)}
+                    onSelect={(d) => d && setSelectedDate(d)}
+                    disabled={(d) => toDateInputValue(d) < toDateInputValue(new Date())}
+                    className="w-full"
                   />
-                  <div className="grid grid-cols-2 gap-3">
-                    <FormField
-                      control={form.control}
-                      name="startTime"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Start</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {slots.map((s) => (
-                                <SelectItem key={s.start} value={s.start}>
-                                  {formatTime12h(s.start)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="endTime"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>End</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {slots.map((s) => (
-                                <SelectItem key={s.end} value={s.end}>
-                                  {formatTime12h(s.end)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setShowReschedule(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={rescheduleBooking.isPending}>
-                      {rescheduleBooking.isPending && <Loader2 className="size-4 animate-spin" />}
-                      Confirm Reschedule
-                    </Button>
-                  </div>
-                </form>
-              </Form>
+                </CardContent>
+              </Card>
+
+              <div>
+                <p className="mb-2 text-sm font-medium">{formatDateLong(dateStr)}</p>
+                {isLoadingSlots ? (
+                  <Loader2 className="size-5 animate-spin text-primary" />
+                ) : (
+                  <TimeRangeInput
+                    key={dateStr}
+                    date={dateStr}
+                    bookedRanges={availability?.bookedRanges ?? []}
+                    defaultStart={booking.startTime}
+                    defaultEnd={booking.endTime}
+                    onChange={setSelectedSlot}
+                  />
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowReschedule(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={!selectedSlot || rescheduleBooking.isPending}
+                  onClick={onReschedule}
+                >
+                  {rescheduleBooking.isPending && <Loader2 className="size-4 animate-spin" />}
+                  Confirm Reschedule
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

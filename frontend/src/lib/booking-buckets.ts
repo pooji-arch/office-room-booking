@@ -60,13 +60,15 @@ export function matchesBucket(b: Booking, bucket?: BookingBucket) {
   }
 }
 
-// Pending/Confirmed are derived from time, not stored: a booking reads as
-// "Pending" until its start time arrives, then "Confirmed" while in progress.
+// Completed/Cancelled are terminal and always win. Otherwise a booking that
+// has ever been rescheduled/reassigned (reassignedAt set) reads as
+// "Rescheduled" rather than plain "Confirmed", so it stays identifiable —
+// but it's never "Pending" just for not having started yet.
 export function bookingDisplayStatus(
   b: Booking
-): "CONFIRMED" | "PENDING" | "CANCELLED" | "COMPLETED" {
+): "CONFIRMED" | "RESCHEDULED" | "CANCELLED" | "COMPLETED" {
   if (b.status === "CANCELLED") return "CANCELLED"
   if (isCompleted(b)) return "COMPLETED"
-  if (isUpcoming(b)) return "PENDING"
+  if (b.reassignedAt) return "RESCHEDULED"
   return "CONFIRMED"
 }

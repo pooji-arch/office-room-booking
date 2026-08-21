@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { CalendarRange, Eye, Trash2 } from "lucide-react"
+import { CalendarRange, Eye, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -61,6 +61,18 @@ export function BookingsManagementPage() {
   })
   const cancelBooking = useCancelBooking()
   const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null)
+
+  const hasActiveFilters =
+    search !== "" || roomId !== "all" || dateFrom !== "" || dateTo !== "" || bucket !== "all"
+
+  function clearFilters() {
+    setSearch("")
+    setRoomId("all")
+    setDateFrom("")
+    setDateTo("")
+    setBucket("all")
+    setPage(1)
+  }
 
   async function confirmCancel() {
     if (!bookingToCancel) return
@@ -127,6 +139,12 @@ export function BookingsManagementPage() {
             className="w-[150px]"
           />
         </div>
+        {hasActiveFilters && (
+          <Button type="button" variant="ghost" onClick={clearFilters}>
+            <X className="size-4" />
+            Clear Filters
+          </Button>
+        )}
       </div>
 
       <BookingStatusTabs
@@ -142,7 +160,7 @@ export function BookingsManagementPage() {
         {!isLoading && data?.data.length === 0 ? (
           <EmptyState icon={CalendarRange} title="No bookings found" description="Try adjusting your filters." />
         ) : (
-          <Table>
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Date & Time</TableHead>

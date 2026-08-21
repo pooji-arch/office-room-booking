@@ -118,7 +118,7 @@ export function ProfilePage() {
                 name="currentPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Current Password</FormLabel>
+                    <FormLabel>Current Password *</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>

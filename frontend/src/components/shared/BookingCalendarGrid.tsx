@@ -13,17 +13,22 @@ interface BookingCalendarGridProps {
   endHour?: number
   onBookingClick?: (booking: Booking) => void
   emptyHint?: string
+  currentUserId?: string // when set, that user's own bookings show "You" instead of their name
 }
 
 function statusClasses(booking: Booking) {
   const status = bookingDisplayStatus(booking)
-  if (status === "CANCELLED") {
-    return "border-muted-foreground/30 bg-muted text-muted-foreground line-through"
+  switch (status) {
+    case "CANCELLED":
+      return "border-muted-foreground/30 bg-muted text-muted-foreground line-through"
+    case "COMPLETED":
+      return "border-primary/30 bg-primary/10 text-primary"
+    case "RESCHEDULED":
+      return "border-warning/40 bg-warning/15 text-warning-foreground"
+    case "CONFIRMED":
+    default:
+      return "border-success/40 bg-success/15 text-success"
   }
-  if (status === "PENDING") {
-    return "border-warning/40 bg-warning/15 text-warning-foreground"
-  }
-  return "border-primary/30 bg-primary/10 text-primary"
 }
 
 export function BookingCalendarGrid({
@@ -33,6 +38,7 @@ export function BookingCalendarGrid({
   endHour = 18,
   onBookingClick,
   emptyHint,
+  currentUserId,
 }: BookingCalendarGridProps) {
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i)
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -105,7 +111,9 @@ export function BookingCalendarGrid({
                   >
                     <p className="truncate font-semibold">{booking.roomName}</p>
                     <p className="truncate">{formatTime12h(booking.startTime)}</p>
-                    <p className="truncate">{booking.bookedBy.name}</p>
+                    <p className="truncate">
+                      {booking.bookedBy.id === currentUserId ? "You" : booking.bookedBy.name}
+                    </p>
                   </button>
                 )
               })}

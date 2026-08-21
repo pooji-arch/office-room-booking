@@ -3,6 +3,7 @@ import type { Room } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { RoomImagePlaceholder } from "./RoomImagePlaceholder"
+import { StatusBadge } from "./StatusBadge"
 
 interface RoomCardProps {
   room: Room
@@ -12,15 +13,20 @@ interface RoomCardProps {
 export function RoomCard({ room, onViewDetails }: RoomCardProps) {
   return (
     <Card className="overflow-hidden py-0">
-      {room.imageUrl ? (
-        <img
-          src={room.imageUrl}
-          alt={room.name}
-          className="h-36 w-full object-cover"
-        />
-      ) : (
-        <RoomImagePlaceholder seed={room.id} className="h-36 w-full" />
-      )}
+      <div className="relative">
+        {room.imageUrl ? (
+          <img
+            src={room.imageUrl}
+            alt={room.name}
+            className="h-36 w-full object-cover"
+          />
+        ) : (
+          <RoomImagePlaceholder seed={room.id} className="h-36 w-full" />
+        )}
+        {room.status === "MAINTENANCE" && (
+          <StatusBadge status="MAINTENANCE" className="absolute right-2 top-2 bg-card" />
+        )}
+      </div>
       <div className="space-y-3 p-4">
         <div>
           <h3 className="font-semibold">{room.name}</h3>
