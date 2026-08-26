@@ -22,6 +22,7 @@ import { SearchInput } from "@/components/shared/SearchInput"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Pagination } from "@/components/shared/Pagination"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { TableSkeleton } from "@/components/shared/TableSkeleton"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useDeactivateUser, useUsers } from "@/hooks/useUsers"
@@ -35,14 +36,21 @@ export function UsersManagementPage() {
   const [role, setRole] = useState<Role | "all">("all")
   const [status, setStatus] = useState<UserStatus | "all">("all")
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const debouncedSearch = useDebouncedValue(search)
   const { data, isLoading } = useUsers({
     search: debouncedSearch,
     role: role === "all" ? undefined : role,
     status: status === "all" ? undefined : status,
     page,
+    pageSize,
   })
   const deactivateUser = useDeactivateUser()
+
+  function handlePageSizeChange(size: number) {
+    setPageSize(size)
+    setPage(1)
+  }
   const [userToDeactivate, setUserToDeactivate] = useState<User | null>(null)
 
   const hasActiveFilters = search !== "" || role !== "all" || status !== "all"
@@ -132,7 +140,20 @@ export function UsersManagementPage() {
       </div>
 
       <div className="rounded-xl border bg-card">
-        {!isLoading && data?.data.length === 0 ? (
+        {isLoading ? (
+          <Table className="min-w-[640px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableSkeleton columns={["avatarText", "text", "badge", "badge", "actions"]} />
+          </Table>
+        ) : data?.data.length === 0 ? (
           <EmptyState icon={UsersIcon} title="No users found" description="Try adjusting your filters." />
         ) : (
           <Table className="min-w-[640px]">
@@ -191,7 +212,7 @@ export function UsersManagementPage() {
         )}
         {data && (
           <div className="p-4">
-            <Pagination pagination={data.pagination} onPageChange={setPage} />
+            <Pagination pagination={data.pagination} onPageChange={setPage} onPageSizeChange={handlePageSizeChange} />
           </div>
         )}
       </div>

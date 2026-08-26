@@ -3,11 +3,13 @@ import { RouterProvider } from "react-router-dom"
 import { Toaster } from "@/components/ui/sonner"
 import { queryClient } from "@/lib/query-client"
 import { AuthProvider } from "@/hooks/useAuth"
-import { useBookingsRealtime } from "@/hooks/useBookingsRealtime"
+import { useMeetingsRealtime } from "@/hooks/useMeetingsRealtime"
+import { useNotificationsRealtime } from "@/hooks/useNotificationsRealtime"
 import { router } from "@/app/router"
 
 function RealtimeBridge() {
-  useBookingsRealtime()
+  useMeetingsRealtime()
+  useNotificationsRealtime()
   return null
 }
 

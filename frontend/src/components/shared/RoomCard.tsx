@@ -12,19 +12,23 @@ interface RoomCardProps {
 
 export function RoomCard({ room, onViewDetails }: RoomCardProps) {
   return (
-    <Card className="overflow-hidden py-0">
-      <div className="relative">
+    <Card className="group overflow-hidden py-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10">
+      <div className="relative overflow-hidden">
         {room.imageUrl ? (
           <img
             src={room.imageUrl}
             alt={room.name}
-            className="h-36 w-full object-cover"
+            className="h-36 w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
-          <RoomImagePlaceholder seed={room.id} className="h-36 w-full" />
+          <RoomImagePlaceholder
+            seed={room.id}
+            className="h-36 w-full transition-transform duration-500 group-hover:scale-110"
+          />
         )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         {room.status === "MAINTENANCE" && (
-          <StatusBadge status="MAINTENANCE" className="absolute right-2 top-2 bg-card" />
+          <StatusBadge status="MAINTENANCE" className="absolute right-2 top-2 bg-card shadow-sm" />
         )}
       </div>
       <div className="space-y-3 p-4">

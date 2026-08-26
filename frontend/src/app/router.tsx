@@ -9,21 +9,24 @@ import { LoginPage } from "@/pages/auth/LoginPage"
 
 import { RoomsManagementPage } from "@/pages/admin/RoomsManagementPage"
 import { RoomFormPage } from "@/pages/admin/RoomFormPage"
-import { BookingsManagementPage } from "@/pages/admin/BookingsManagementPage"
-import { BookingDetailsPage as AdminBookingDetailsPage } from "@/pages/admin/BookingDetailsPage"
+import { MeetingsManagementPage } from "@/pages/admin/MeetingsManagementPage"
+import { MeetingDetailsPage as AdminMeetingDetailsPage } from "@/pages/admin/MeetingDetailsPage"
+import { MeetingEditPage } from "@/pages/admin/MeetingEditPage"
 import { UsersManagementPage } from "@/pages/admin/UsersManagementPage"
 import { UserFormPage } from "@/pages/admin/UserFormPage"
 import { CalendarViewPage } from "@/pages/admin/CalendarViewPage"
+import { ManagementReportingPage } from "@/pages/admin/ManagementReportingPage"
 import { SettingsPage } from "@/pages/admin/SettingsPage"
 
 import { ProfilePage } from "@/pages/shared/ProfilePage"
+import { NotificationsPage } from "@/pages/shared/NotificationsPage"
 
 import { HomePage } from "@/pages/user/HomePage"
 import { RoomDetailsPage } from "@/pages/user/RoomDetailsPage"
 import { RoomCalendarViewPage } from "@/pages/user/RoomCalendarViewPage"
-import { MyBookingsPage } from "@/pages/user/MyBookingsPage"
-import { UserBookingDetailsPage } from "@/pages/user/UserBookingDetailsPage"
-import { NotificationsPage } from "@/pages/user/NotificationsPage"
+import { MyMeetingsPage } from "@/pages/user/MyMeetingsPage"
+import { UserMeetingDetailsPage } from "@/pages/user/UserMeetingDetailsPage"
+import { MeetingReschedulePage } from "@/pages/user/MeetingReschedulePage"
 import { HelpSupportPage } from "@/pages/user/HelpSupportPage"
 
 import { RootRedirect } from "@/pages/RootRedirect"
@@ -47,12 +50,14 @@ export const router = createBrowserRouter([
               { path: "rooms", element: <RoomsManagementPage /> },
               { path: "rooms/new", element: <RoomFormPage /> },
               { path: "rooms/:id/edit", element: <RoomFormPage /> },
-              { path: "bookings", element: <BookingsManagementPage /> },
-              { path: "bookings/:id", element: <AdminBookingDetailsPage /> },
+              { path: "meetings", element: <MeetingsManagementPage /> },
+              { path: "meetings/:id", element: <AdminMeetingDetailsPage /> },
+              { path: "meetings/:id/edit", element: <MeetingEditPage /> },
               { path: "users", element: <UsersManagementPage /> },
               { path: "users/new", element: <UserFormPage /> },
               { path: "users/:id/edit", element: <UserFormPage /> },
               { path: "calendar", element: <CalendarViewPage /> },
+              { path: "reports", element: <ManagementReportingPage /> },
               { path: "settings", element: <SettingsPage /> },
               { path: "profile", element: <ProfilePage /> },
             ],
@@ -69,8 +74,9 @@ export const router = createBrowserRouter([
               { index: true, element: <HomePage /> },
               { path: "rooms/:id", element: <RoomDetailsPage /> },
               { path: "rooms/:id/calendar", element: <RoomCalendarViewPage /> },
-              { path: "my-bookings", element: <MyBookingsPage /> },
-              { path: "my-bookings/:id", element: <UserBookingDetailsPage /> },
+              { path: "meetings", element: <MyMeetingsPage /> },
+              { path: "meetings/:id", element: <UserMeetingDetailsPage /> },
+              { path: "meetings/:id/reschedule", element: <MeetingReschedulePage /> },
               { path: "profile", element: <ProfilePage /> },
               { path: "notifications", element: <NotificationsPage /> },
               { path: "help", element: <HelpSupportPage /> },

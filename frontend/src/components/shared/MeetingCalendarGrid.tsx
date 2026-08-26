@@ -1,23 +1,23 @@
 import { toMinutes } from "@/lib/business-hours"
-import { bookingDisplayStatus } from "@/lib/booking-buckets"
+import { meetingDisplayStatus } from "@/lib/meeting-buckets"
 import { formatDateWeekday, formatTime12h } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import type { Booking } from "@/types"
+import type { Meeting } from "@/types"
 
 const HOUR_HEIGHT_PX = 64
 
-interface BookingCalendarGridProps {
+interface MeetingCalendarGridProps {
   days: string[] // YYYY-MM-DD, 1 entry for day view, 7 for week view
-  bookings: Booking[]
+  meetings: Meeting[]
   startHour?: number
   endHour?: number
-  onBookingClick?: (booking: Booking) => void
+  onMeetingClick?: (meeting: Meeting) => void
   emptyHint?: string
-  currentUserId?: string // when set, that user's own bookings show "You" instead of their name
+  currentUserId?: string // when set, that user's own meetings show "You" instead of their name
 }
 
-function statusClasses(booking: Booking) {
-  const status = bookingDisplayStatus(booking)
+function statusClasses(meeting: Meeting) {
+  const status = meetingDisplayStatus(meeting)
   switch (status) {
     case "CANCELLED":
       return "border-muted-foreground/30 bg-muted text-muted-foreground line-through"
@@ -31,25 +31,25 @@ function statusClasses(booking: Booking) {
   }
 }
 
-export function BookingCalendarGrid({
+export function MeetingCalendarGrid({
   days,
-  bookings,
+  meetings,
   startHour = 8,
   endHour = 18,
-  onBookingClick,
+  onMeetingClick,
   emptyHint,
   currentUserId,
-}: BookingCalendarGridProps) {
+}: MeetingCalendarGridProps) {
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i)
   const todayStr = new Date().toISOString().slice(0, 10)
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes()
   const gridStartMinutes = startHour * 60
 
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card">
+    <div className="overflow-hidden rounded-xl border bg-card">
       <div
-        className="grid min-w-[640px]"
-        style={{ gridTemplateColumns: `64px repeat(${days.length}, 1fr)` }}
+        className="grid"
+        style={{ gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}
       >
         {/* Header row */}
         <div className="sticky top-0 z-10 border-b border-r bg-card" />
@@ -80,11 +80,15 @@ export function BookingCalendarGrid({
 
         {/* Day columns */}
         {days.map((day) => {
-          const dayBookings = bookings.filter((b) => b.date === day)
+          const dayMeetings = meetings.filter((m) => m.date === day)
           return (
             <div key={day} className="relative border-r last:border-r-0">
               {hours.map((h) => (
-                <div key={h} className="border-b last:border-b-0" style={{ height: HOUR_HEIGHT_PX }} />
+                <div
+                  key={h}
+                  className="border-b transition-colors last:border-b-0 hover:bg-muted/40"
+                  style={{ height: HOUR_HEIGHT_PX }}
+                />
               ))}
 
               {day === todayStr && nowMinutes >= gridStartMinutes && nowMinutes <= endHour * 60 && (
@@ -94,25 +98,25 @@ export function BookingCalendarGrid({
                 />
               )}
 
-              {dayBookings.map((booking) => {
-                const start = toMinutes(booking.startTime)
-                const end = toMinutes(booking.endTime)
+              {dayMeetings.map((meeting) => {
+                const start = toMinutes(meeting.startTime)
+                const end = toMinutes(meeting.endTime)
                 const top = ((start - gridStartMinutes) / 60) * HOUR_HEIGHT_PX
                 const height = Math.max(((end - start) / 60) * HOUR_HEIGHT_PX - 2, 20)
                 return (
                   <button
-                    key={booking.id}
-                    onClick={() => onBookingClick?.(booking)}
+                    key={meeting.id}
+                    onClick={() => onMeetingClick?.(meeting)}
                     className={cn(
-                      "absolute inset-x-1 z-[5] overflow-hidden rounded-md border px-1.5 py-1 text-left text-[11px] leading-tight shadow-sm transition-transform hover:z-20 hover:scale-[1.02]",
-                      statusClasses(booking)
+                      "absolute inset-x-1 z-[5] overflow-hidden rounded-md border px-1.5 py-1 text-left text-[11px] leading-tight shadow-sm transition-all hover:z-20 hover:scale-[1.02] hover:shadow-md",
+                      statusClasses(meeting)
                     )}
                     style={{ top, height }}
                   >
-                    <p className="truncate font-semibold">{booking.roomName}</p>
-                    <p className="truncate">{formatTime12h(booking.startTime)}</p>
+                    <p className="truncate font-semibold">{meeting.roomName}</p>
+                    <p className="truncate">{formatTime12h(meeting.startTime)}</p>
                     <p className="truncate">
-                      {booking.bookedBy.id === currentUserId ? "You" : booking.bookedBy.name}
+                      {meeting.bookedBy.id === currentUserId ? "You" : meeting.bookedBy.name}
                     </p>
                   </button>
                 )
@@ -121,7 +125,7 @@ export function BookingCalendarGrid({
           )
         })}
       </div>
-      {bookings.length === 0 && emptyHint && (
+      {meetings.length === 0 && emptyHint && (
         <p className="border-t p-4 text-center text-sm text-muted-foreground">{emptyHint}</p>
       )}
     </div>

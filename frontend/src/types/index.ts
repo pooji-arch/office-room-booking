@@ -1,15 +1,17 @@
 export type Role = "ADMIN" | "USER"
 export type UserStatus = "ACTIVE" | "INACTIVE"
 export type RoomStatus = "AVAILABLE" | "MAINTENANCE" | "UNAVAILABLE"
-export type BookingStatus = "CONFIRMED" | "CANCELLED"
+export type MeetingStatus = "CONFIRMED" | "CANCELLED"
+export type MeetingType = "INTERNAL" | "CLIENT" | "REVIEW" | "OTHER"
+export type ParticipantRole = "CHAIR" | "PARTICIPANT"
+export type RsvpStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "TENTATIVE"
 
-export type BookingBucket =
-  | "all"
-  | "upcoming"
-  | "today"
-  | "past"
-  | "completed"
-  | "cancelled"
+export type MeetingBucket = "all" | "upcoming" | "completed" | "followup"
+
+export type MinutesStatus = "DRAFT" | "FINAL"
+
+export type ActionItemStatus = "OPEN" | "IN_PROGRESS" | "DONE" | "DELAYED"
+export type ActionItemPriority = "LOW" | "MEDIUM" | "HIGH"
 
 export interface User {
   id: string
@@ -36,14 +38,28 @@ export interface Room {
   createdAt: string
 }
 
-export interface BookingParticipant {
+export interface MeetingOrganizer {
   id: string
   name: string
   email: string
   phone?: string
 }
 
-export interface Booking {
+export interface MeetingParticipant {
+  id: string
+  meetingId: string
+  profileId?: string
+  externalName?: string
+  externalEmail?: string
+  externalOrganization?: string
+  name: string
+  email?: string
+  role: ParticipantRole
+  rsvpStatus: RsvpStatus
+  createdAt: string
+}
+
+export interface Meeting {
   id: string
   code: string
   roomId: string
@@ -52,10 +68,15 @@ export interface Booking {
   date: string // YYYY-MM-DD
   startTime: string // HH:mm
   endTime: string // HH:mm
-  bookedBy: BookingParticipant
+  bookedBy: MeetingOrganizer
   purpose: string
-  attendees: number
-  status: BookingStatus
+  title?: string
+  type: MeetingType
+  department?: string
+  reviewDate?: string
+  previousMeetingId?: string
+  attendees?: number
+  status: MeetingStatus
   cancelledAt?: string
   cancellationReason?: string
   reassignedAt?: string
@@ -89,9 +110,107 @@ export interface RoomAvailability {
   bookedRanges: BookedRange[]
 }
 
-export interface BookingHistoryEntry {
+export interface AgendaItem {
   id: string
-  bookingId: string
+  meetingId: string
+  topic: string
+  ownerId?: string
+  ownerName?: string
+  allottedMinutes: number
+  sortOrder: number
+  createdAt: string
+}
+
+export interface MinutesItem {
+  id: string
+  minutesId: string
+  topic: string
+  notes: string
+  decision?: string
+  agendaItemId?: string
+  sortOrder: number
+  createdAt: string
+}
+
+export interface Minutes {
+  id: string
+  meetingId: string
+  status: MinutesStatus
+  finalizedBy?: { id: string; name: string }
+  finalizedAt?: string
+  createdAt: string
+}
+
+export interface ActionItem {
+  id: string
+  meetingId: string
+  minutesItemId?: string
+  title: string
+  description?: string
+  ownerId?: string
+  ownerName?: string
+  dueDate?: string
+  status: ActionItemStatus
+  priority: ActionItemPriority
+  completedAt?: string
+  createdAt: string
+}
+
+export type NotificationType =
+  | "PARTICIPANT_ADDED"
+  | "ACTION_ITEM_ASSIGNED"
+  | "MEETING_CANCELLED"
+  | "MEETING_RESCHEDULED"
+  | "MINUTES_FINALIZED"
+  | "MEETING_REMINDER_24H"
+  | "MEETING_REMINDER_1H"
+  | "ACTION_ITEM_DUE_SOON"
+  | "ACTION_ITEM_OVERDUE_DIGEST"
+  | "MOM_PENDING_NUDGE"
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  title: string
+  message: string
+  link?: string
+  meetingId?: string
+  read: boolean
+  createdAt: string
+}
+
+export interface ActionItemWithMeeting extends ActionItem {
+  meetingTitle: string
+  meetingDate: string
+  meetingDepartment?: string
+}
+
+export interface ActionItemStatusHistoryEntry {
+  id: string
+  actionItemId: string
+  actionItemTitle: string
+  meetingId: string
+  meetingTitle: string
+  changedByName?: string
+  previousStatus: ActionItemStatus
+  newStatus: ActionItemStatus
+  changedAt: string
+}
+
+export interface MinutesRevisionEntry {
+  id: string
+  minutesId: string
+  meetingId: string
+  meetingTitle: string
+  authorName?: string
+  reason: string
+  changeSummary?: string
+  changedAt: string
+}
+
+export interface MeetingHistoryEntry {
+  id: string
+  meetingId: string
   previousRoomName: string
   previousRoomLocation: string
   previousDate: string

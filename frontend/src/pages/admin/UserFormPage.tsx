@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { FormPageSkeleton } from "@/components/shared/PageSkeletons"
 import { useCreateUser, useResetPassword, useUpdateUser, useUser } from "@/hooks/useUsers"
 
 const schema = z.object({
@@ -156,7 +157,7 @@ export function UserFormPage() {
   const isSaving = createUser.isPending || updateUser.isPending
 
   if (isEdit && isLoadingUser) {
-    return <Loader2 className="size-6 animate-spin text-primary" />
+    return <FormPageSkeleton fields={5} />
   }
 
   if (temporaryPassword) {

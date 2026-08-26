@@ -26,6 +26,7 @@ import {
   FormDescription,
 } from "@/components/ui/form"
 import { RoomImagePlaceholder } from "@/components/shared/RoomImagePlaceholder"
+import { FormPageSkeleton } from "@/components/shared/PageSkeletons"
 import { useCreateRoom, useRoom, useRoomLocations, useUpdateRoom } from "@/hooks/useRooms"
 import { uploadRoomImage } from "@/services/rooms.supabase"
 
@@ -129,7 +130,7 @@ export function RoomFormPage() {
   const isSaving = createRoom.isPending || updateRoom.isPending || isUploadingImage
 
   if (isEdit && isLoadingRoom) {
-    return <Loader2 className="size-6 animate-spin text-primary" />
+    return <FormPageSkeleton fields={4} />
   }
 
   return (

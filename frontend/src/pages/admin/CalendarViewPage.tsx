@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { BookingCalendarGrid } from "@/components/shared/BookingCalendarGrid"
-import { BookingDetailsDialogBody } from "@/components/shared/BookingDetailsDialogBody"
-import { useBookings } from "@/hooks/useBookings"
+import { MeetingCalendarGrid } from "@/components/shared/MeetingCalendarGrid"
+import { MeetingDetailsDialogBody } from "@/components/shared/MeetingDetailsDialogBody"
+import { useMeetings } from "@/hooks/useMeetings"
 import { useRooms } from "@/hooks/useRooms"
 import { getWeekDays } from "@/lib/week"
 import { formatDateShort, toDateInputValue } from "@/lib/format"
@@ -22,7 +22,7 @@ export function CalendarViewPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [view, setView] = useState<"week" | "day">("week")
   const [roomId, setRoomId] = useState("all")
-  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null)
 
   const { data: rooms } = useRooms({ pageSize: 100 })
   const days = useMemo(
@@ -30,7 +30,7 @@ export function CalendarViewPage() {
     [selectedDate, view]
   )
 
-  const { data } = useBookings({
+  const { data } = useMeetings({
     roomId: roomId === "all" ? undefined : roomId,
     dateFrom: days[0],
     dateTo: days[days.length - 1],
@@ -83,17 +83,20 @@ export function CalendarViewPage() {
               </Select>
 
               <p className="pt-2 text-sm font-medium">Status</p>
-              <div className="space-y-1.5 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <span className="size-2.5 rounded-full bg-success" /> Confirmed
+              <div className="space-y-1 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
+                  <span className="size-2.5 rounded-full bg-success shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-success/60" />
+                  Confirmed
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="size-2.5 rounded-full bg-primary" /> Completed
+                <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
+                  <span className="size-2.5 rounded-full bg-primary shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-primary/60" />
+                  Completed
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="size-2.5 rounded-full bg-warning" /> Rescheduled
+                <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
+                  <span className="size-2.5 rounded-full bg-warning shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-warning/60" />
+                  Rescheduled
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
                   <span className="size-2.5 rounded-full bg-muted-foreground/50" /> Cancelled
                 </div>
               </div>
@@ -130,19 +133,19 @@ export function CalendarViewPage() {
             </div>
           </div>
 
-          <BookingCalendarGrid
+          <MeetingCalendarGrid
             days={days}
-            bookings={data?.data ?? []}
-            onBookingClick={(b) => setSelectedBookingId(b.id)}
-            emptyHint="No bookings in this range."
+            meetings={data?.data ?? []}
+            onMeetingClick={(m) => setSelectedMeetingId(m.id)}
+            emptyHint="No meetings in this range."
           />
         </div>
       </div>
 
-      <Dialog open={!!selectedBookingId} onOpenChange={(o) => !o && setSelectedBookingId(null)}>
+      <Dialog open={!!selectedMeetingId} onOpenChange={(o) => !o && setSelectedMeetingId(null)}>
         <DialogContent className="sm:max-w-xl">
-          {selectedBookingId && (
-            <BookingDetailsDialogBody key={selectedBookingId} bookingId={selectedBookingId} />
+          {selectedMeetingId && (
+            <MeetingDetailsDialogBody key={selectedMeetingId} meetingId={selectedMeetingId} />
           )}
         </DialogContent>
       </Dialog>

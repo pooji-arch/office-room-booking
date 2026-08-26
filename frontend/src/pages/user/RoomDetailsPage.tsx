@@ -1,15 +1,23 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
-import { ArrowLeft, CalendarDays, Loader2, Users, Wrench } from "lucide-react"
+import { ArrowLeft, CalendarDays, ChevronRight, Loader2, Users, Wrench } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Form,
   FormControl,
@@ -22,14 +30,18 @@ import { RoomImagePlaceholder } from "@/components/shared/RoomImagePlaceholder"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { TimeRangeInput } from "@/components/shared/TimeRangeInput"
+import { RoomDetailsSkeleton } from "@/components/shared/PageSkeletons"
 import { useRoom, useRoomAvailability } from "@/hooks/useRooms"
-import { useCreateBooking } from "@/hooks/useBookings"
+import { useAddAgendaItem, useAddParticipant, useCreateMeeting, useMeeting } from "@/hooks/useMeetings"
+import { useUsers } from "@/hooks/useUsers"
 import { useAuth } from "@/hooks/useAuth"
-import { formatDateLong, parseDateInputValue, toDateInputValue } from "@/lib/format"
+import { meetingsService } from "@/services/meetings"
+import { formatDateMedium, formatTimeRange, parseDateInputValue, toDateInputValue } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 const schema = z.object({
   purpose: z.string().min(1, "Purpose is required"),
-  attendees: z.coerce.number().int().min(1, "At least 1 attendee"),
+  department: z.string().min(1, "Department is required"),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -40,6 +52,9 @@ export function RoomDetailsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
+  const previousMeetingId = searchParams.get("previousMeetingId") ?? undefined
+  const { data: previousMeeting } = useMeeting(previousMeetingId)
+
   const initialDateParam = searchParams.get("date")
   const [selectedDate, setSelectedDate] = useState<Date>(
     initialDateParam ? parseDateInputValue(initialDateParam) : new Date()
@@ -47,13 +62,27 @@ export function RoomDetailsPage() {
   const dateStr = toDateInputValue(selectedDate)
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null)
 
+  const [dateTimeOpen, setDateTimeOpen] = useState(false)
+
   const { data: room, isLoading } = useRoom(id)
   const { data: availability, isLoading: isLoadingSlots } = useRoomAvailability(id, dateStr)
-  const createBooking = useCreateBooking()
+  const { data: usersData } = useUsers({ pageSize: 100 })
+  const createMeeting = useCreateMeeting()
+  const addParticipant = useAddParticipant()
+  const addAgendaItem = useAddAgendaItem()
+
+  const departments = useMemo(
+    () =>
+      [...new Set((usersData?.data ?? []).map((u) => u.department).filter(Boolean))].sort() as string[],
+    [usersData]
+  )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { purpose: "", attendees: 1 },
+    defaultValues: {
+      purpose: searchParams.get("purpose") ?? "",
+      department: searchParams.get("department") ?? "",
+    },
   })
 
   useEffect(() => {
@@ -67,24 +96,64 @@ export function RoomDetailsPage() {
       return
     }
     try {
-      const booking = await createBooking.mutateAsync({
+      const meeting = await createMeeting.mutateAsync({
         roomId: id,
         date: dateStr,
         startTime: selectedSlot.start,
         endTime: selectedSlot.end,
         bookedById: user.id,
         purpose: values.purpose,
-        attendees: values.attendees,
+        department: values.department,
+        previousMeetingId,
       })
-      toast.success("Room booked")
-      navigate(`/my-bookings/${booking.id}`)
+
+      let carryForwardFailed = false
+      if (previousMeetingId) {
+        try {
+          const previousParticipants = await meetingsService.listParticipants(previousMeetingId)
+          for (const p of previousParticipants) {
+            if (p.profileId && p.profileId !== user.id) {
+              await addParticipant.mutateAsync({
+                meetingId: meeting.id,
+                input: { profileId: p.profileId, role: p.role },
+              })
+            }
+          }
+        } catch {
+          carryForwardFailed = true
+        }
+
+        try {
+          const previousActionItems = await meetingsService.listActionItems(previousMeetingId)
+          const openItems = previousActionItems.filter((item) => item.status !== "DONE")
+          for (const item of openItems) {
+            await addAgendaItem.mutateAsync({
+              meetingId: meeting.id,
+              input: { topic: `Follow-up: ${item.title}`, ownerId: item.ownerId },
+            })
+          }
+        } catch {
+          carryForwardFailed = true
+        }
+      }
+
+      if (previousMeetingId) {
+        toast.success(
+          carryForwardFailed
+            ? "Follow-up meeting booked, but some details couldn't be copied — check the Agenda & RSVPs and Action Items tabs."
+            : "Follow-up meeting booked — participants and open action items were carried forward."
+        )
+      } else {
+        toast.success("Room booked")
+      }
+      navigate(`/meetings/${meeting.id}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to book room")
     }
   }
 
   if (isLoading || !room) {
-    return <Loader2 className="size-6 animate-spin text-primary" />
+    return <RoomDetailsSkeleton />
   }
 
   const isBookable = room.status === "AVAILABLE"
@@ -105,103 +174,152 @@ export function RoomDetailsPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
+      {previousMeeting && (
+        <div className="rounded-lg bg-accent p-3 text-sm text-accent-foreground">
+          Scheduling a follow-up to meeting {previousMeeting.code}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_420px]">
         <div className="space-y-4">
           {room.imageUrl ? (
             <img
               src={room.imageUrl}
               alt={room.name}
-              className="h-64 w-full rounded-xl object-cover"
+              className="h-64 w-full rounded-xl object-cover lg:h-full lg:min-h-[22rem]"
             />
           ) : (
-            <RoomImagePlaceholder seed={room.id} className="h-64 w-full rounded-xl" />
+            <RoomImagePlaceholder seed={room.id} className="h-64 w-full rounded-xl lg:h-full lg:min-h-[22rem]" />
           )}
-          <Card>
-            <CardContent className="space-y-4 pt-4">
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Users className="size-4" />
-                Capacity {room.capacity} · {room.location}
-              </div>
-              {room.description && (
-                <p className="text-sm text-muted-foreground">{room.description}</p>
-              )}
-            </CardContent>
-          </Card>
+          {room.description && (
+            <p className="text-sm text-muted-foreground">{room.description}</p>
+          )}
         </div>
 
-        <div className="space-y-4">
+        <div>
           {isBookable ? (
-            <>
-              <Card className="py-2">
-                <CardContent className="px-2">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(d) => d && setSelectedDate(d)}
-                    disabled={(d) => toDateInputValue(d) < toDateInputValue(new Date())}
-                    className="w-full"
-                  />
-                </CardContent>
-              </Card>
+            <Card>
+              <CardContent className="space-y-4 pt-4">
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Users className="size-4" />
+                  Capacity {room.capacity} · {room.location}
+                </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{formatDateLong(dateStr)}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isLoadingSlots ? (
-                    <Loader2 className="size-5 animate-spin text-primary" />
-                  ) : (
-                    <TimeRangeInput
-                      key={dateStr}
-                      date={dateStr}
-                      bookedRanges={availability?.bookedRanges ?? []}
-                      defaultStart={searchParams.get("time") ?? undefined}
-                      onChange={setSelectedSlot}
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <div>
+                      <Label>
+                        Date &amp; Time *
+                      </Label>
+                      <Popover open={dateTimeOpen} onOpenChange={setDateTimeOpen}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="mt-1.5 flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50"
+                          >
+                            <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
+                            <span className="flex-1 truncate">
+                              {selectedSlot
+                                ? `${formatDateMedium(dateStr)} · ${formatTimeRange(selectedSlot.start, selectedSlot.end)}`
+                                : `${formatDateMedium(dateStr)} · Pick a time`}
+                            </span>
+                            <ChevronRight
+                              className={cn(
+                                "size-4 shrink-0 text-muted-foreground transition-transform",
+                                dateTimeOpen && "rotate-90"
+                              )}
+                            />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-auto max-h-[min(28rem,var(--radix-popover-content-available-height))] overflow-y-auto p-3"
+                          align="start"
+                        >
+                          <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={(d) => d && setSelectedDate(d)}
+                            disabled={(d) => toDateInputValue(d) < toDateInputValue(new Date())}
+                          />
+                          <div className="mt-2 border-t pt-3">
+                            {isLoadingSlots ? (
+                              <Loader2 className="size-5 animate-spin text-primary" />
+                            ) : (
+                              <TimeRangeInput
+                                key={dateStr}
+                                date={dateStr}
+                                bookedRanges={availability?.bookedRanges ?? []}
+                                defaultStart={searchParams.get("time") ?? undefined}
+                                onChange={setSelectedSlot}
+                              />
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            className="mt-3 w-full"
+                            size="sm"
+                            onClick={() => setDateTimeOpen(false)}
+                          >
+                            Done
+                          </Button>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="department"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Department *</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select department" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {departments.map((dept) => (
+                                <SelectItem key={dept} value={dept}>
+                                  {dept}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  )}
 
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-                      <FormField
-                        control={form.control}
-                        name="purpose"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Purpose</FormLabel>
-                            <FormControl>
-                              <Textarea rows={2} placeholder="What's this booking for?" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="attendees"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Attendees</FormLabel>
-                            <FormControl>
-                              <Input type="number" min={1} max={room.capacity} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button
-                        type="submit"
-                        className="w-full"
-                        disabled={!selectedSlot || createBooking.isPending}
-                      >
-                        {createBooking.isPending && <Loader2 className="size-4 animate-spin" />}
-                        Book This Slot
-                      </Button>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
-            </>
+                    <FormField
+                      control={form.control}
+                      name="purpose"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Purpose *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="What's this booking for?" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={!selectedSlot || createMeeting.isPending}
+                    >
+                      {createMeeting.isPending && <Loader2 className="size-4 animate-spin" />}
+                      Book This Slot
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Pick a date &amp; time and a department to enable booking.
+                    </p>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
           ) : (
             <Card>
               <CardContent className="pt-6">

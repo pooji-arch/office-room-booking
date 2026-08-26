@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { authService } from "@/services/auth"
 import { initials } from "@/lib/format"
 import { StatusBadge } from "@/components/shared/StatusBadge"
+import { ProfilePageSkeleton } from "@/components/shared/PageSkeletons"
 
 const schema = z
   .object({
@@ -54,7 +55,7 @@ export function ProfilePage() {
     },
   })
 
-  if (!user) return <Loader2 className="size-6 animate-spin text-primary" />
+  if (!user) return <ProfilePageSkeleton />
 
   return (
     <div className="max-w-xl space-y-6">

@@ -1,18 +1,19 @@
 import { useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { BookingCalendarGrid } from "@/components/shared/BookingCalendarGrid"
-import { BookingDetailsDialogBody } from "@/components/shared/BookingDetailsDialogBody"
-import { useBookings } from "@/hooks/useBookings"
+import { MeetingCalendarGrid } from "@/components/shared/MeetingCalendarGrid"
+import { CalendarPageSkeleton } from "@/components/shared/PageSkeletons"
+import { MeetingDetailsDialogBody } from "@/components/shared/MeetingDetailsDialogBody"
+import { useMeetings } from "@/hooks/useMeetings"
 import { useRoom } from "@/hooks/useRooms"
 import { useAuth } from "@/hooks/useAuth"
 import { getWeekDays } from "@/lib/week"
 import { formatDateShort, toDateInputValue } from "@/lib/format"
-import type { Booking } from "@/types"
+import type { Meeting } from "@/types"
 
 export function RoomCalendarViewPage() {
   const { id } = useParams()
@@ -20,7 +21,7 @@ export function RoomCalendarViewPage() {
   const { user } = useAuth()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [view, setView] = useState<"week" | "day">("week")
-  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null)
 
   const { data: room, isLoading: isLoadingRoom } = useRoom(id)
   const days = useMemo(
@@ -28,7 +29,7 @@ export function RoomCalendarViewPage() {
     [selectedDate, view]
   )
 
-  const { data } = useBookings({
+  const { data } = useMeetings({
     roomId: id,
     dateFrom: days[0],
     dateTo: days[days.length - 1],
@@ -41,8 +42,8 @@ export function RoomCalendarViewPage() {
     setSelectedDate(d)
   }
 
-  function handleBookingClick(booking: Booking) {
-    setSelectedBookingId(booking.id)
+  function handleMeetingClick(meeting: Meeting) {
+    setSelectedMeetingId(meeting.id)
   }
 
   const rangeLabel =
@@ -51,7 +52,7 @@ export function RoomCalendarViewPage() {
       : formatDateShort(days[0])
 
   if (isLoadingRoom || !room) {
-    return <Loader2 className="size-6 animate-spin text-primary" />
+    return <CalendarPageSkeleton />
   }
 
   return (
@@ -77,17 +78,20 @@ export function RoomCalendarViewPage() {
           </Card>
 
           <Card>
-            <CardContent className="space-y-1.5 pt-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <span className="size-2.5 rounded-full bg-success" /> Confirmed
+            <CardContent className="space-y-1 pt-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
+                <span className="size-2.5 rounded-full bg-success shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-success/60" />
+                Confirmed
               </div>
-              <div className="flex items-center gap-2">
-                <span className="size-2.5 rounded-full bg-primary" /> Completed
+              <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
+                <span className="size-2.5 rounded-full bg-primary shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-primary/60" />
+                Completed
               </div>
-              <div className="flex items-center gap-2">
-                <span className="size-2.5 rounded-full bg-warning" /> Rescheduled
+              <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
+                <span className="size-2.5 rounded-full bg-warning shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-warning/60" />
+                Rescheduled
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
                 <span className="size-2.5 rounded-full bg-muted-foreground/50" /> Cancelled
               </div>
             </CardContent>
@@ -123,20 +127,20 @@ export function RoomCalendarViewPage() {
             </div>
           </div>
 
-          <BookingCalendarGrid
+          <MeetingCalendarGrid
             days={days}
-            bookings={data?.data ?? []}
-            onBookingClick={handleBookingClick}
-            emptyHint="No bookings in this range."
+            meetings={data?.data ?? []}
+            onMeetingClick={handleMeetingClick}
+            emptyHint="No meetings in this range."
             currentUserId={user?.id}
           />
         </div>
       </div>
 
-      <Dialog open={!!selectedBookingId} onOpenChange={(o) => !o && setSelectedBookingId(null)}>
+      <Dialog open={!!selectedMeetingId} onOpenChange={(o) => !o && setSelectedMeetingId(null)}>
         <DialogContent className="sm:max-w-xl">
-          {selectedBookingId && (
-            <BookingDetailsDialogBody key={selectedBookingId} bookingId={selectedBookingId} />
+          {selectedMeetingId && (
+            <MeetingDetailsDialogBody key={selectedMeetingId} meetingId={selectedMeetingId} />
           )}
         </DialogContent>
       </Dialog>

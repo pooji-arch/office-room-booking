@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react"
 import {
+  BarChart3,
   CalendarDays,
   DoorOpen,
   LogOut,
   Menu,
   Settings,
   Users,
-  CalendarRange,
+  Presentation,
   UserRound,
 } from "lucide-react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
-import { AppSidebar, type SidebarNavItem } from "@/components/shared/AppSidebar"
+import { AppSidebar, type SidebarNavSection } from "@/components/shared/AppSidebar"
 import { Logo } from "@/components/shared/Logo"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -25,21 +26,28 @@ import { initials } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/useAuth"
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed"
-
-const NAV_ITEMS: SidebarNavItem[] = [
-  { to: "/admin/rooms", label: "Rooms", icon: DoorOpen },
-  { to: "/admin/bookings", label: "Bookings", icon: CalendarRange },
-  { to: "/admin/users", label: "Users", icon: Users },
-  { to: "/admin/calendar", label: "Calendar", icon: CalendarDays },
-  { to: "/admin/settings", label: "Settings", icon: Settings },
-]
+import { useSidebarWidth } from "@/hooks/useSidebarWidth"
 
 export function AdminLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [collapsed, setCollapsed] = useSidebarCollapsed()
+  const [sidebarWidth, setSidebarWidth] = useSidebarWidth()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const NAV_SECTIONS: SidebarNavSection[] = [
+    {
+      items: [
+        { to: "/admin/rooms", label: "Rooms", icon: DoorOpen },
+        { to: "/admin/meetings", label: "Meetings", icon: Presentation },
+        { to: "/admin/calendar", label: "Calendar", icon: CalendarDays },
+        { to: "/admin/reports", label: "Reports", icon: BarChart3 },
+        { to: "/admin/users", label: "Users", icon: Users },
+        { to: "/admin/settings", label: "Settings", icon: Settings },
+      ],
+    },
+  ]
 
   useEffect(() => {
     setMobileOpen(false)
@@ -54,11 +62,13 @@ export function AdminLayout() {
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar
-        navItems={NAV_ITEMS}
+        navItems={NAV_SECTIONS}
         collapsed={collapsed}
         onToggleCollapsed={() => setCollapsed((c) => !c)}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
+        width={sidebarWidth}
+        onWidthChange={setSidebarWidth}
         footer={(footerCollapsed) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -94,14 +104,14 @@ export function AdminLayout() {
           </DropdownMenu>
         )}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4 lg:hidden">
           <Button variant="ghost" size="icon-sm" onClick={() => setMobileOpen(true)}>
             <Menu className="size-5" />
           </Button>
           <Logo />
         </div>
-        <main className="flex-1 overflow-y-auto">
+        <main className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-7xl px-6 py-6 md:px-8 md:py-8">
             <Outlet />
           </div>

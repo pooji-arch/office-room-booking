@@ -14,6 +14,7 @@ import { SearchInput } from "@/components/shared/SearchInput"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Pagination } from "@/components/shared/Pagination"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { TableSkeleton } from "@/components/shared/TableSkeleton"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { RoomImagePlaceholder } from "@/components/shared/RoomImagePlaceholder"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
@@ -25,10 +26,16 @@ export function RoomsManagementPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const debouncedSearch = useDebouncedValue(search)
-  const { data, isLoading } = useRooms({ search: debouncedSearch, page })
+  const { data, isLoading } = useRooms({ search: debouncedSearch, page, pageSize })
   const deleteRoom = useDeleteRoom()
   const [roomToDelete, setRoomToDelete] = useState<Room | null>(null)
+
+  function handlePageSizeChange(size: number) {
+    setPageSize(size)
+    setPage(1)
+  }
 
   async function confirmDelete() {
     if (!roomToDelete) return
@@ -62,7 +69,20 @@ export function RoomsManagementPage() {
       />
 
       <div className="rounded-xl border bg-card">
-        {!isLoading && data?.data.length === 0 ? (
+        {isLoading ? (
+          <Table className="min-w-[640px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Room Name</TableHead>
+                <TableHead>Capacity</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableSkeleton columns={["avatarText", "text", "text", "badge", "actions"]} />
+          </Table>
+        ) : data?.data.length === 0 ? (
           <EmptyState
             icon={DoorOpen}
             title="No rooms found"
@@ -126,7 +146,7 @@ export function RoomsManagementPage() {
         )}
         {data && (
           <div className="p-4">
-            <Pagination pagination={data.pagination} onPageChange={setPage} />
+            <Pagination pagination={data.pagination} onPageChange={setPage} onPageSizeChange={handlePageSizeChange} />
           </div>
         )}
       </div>

@@ -26,6 +26,15 @@ export function formatDateShort(dateStr: string): string {
   })
 }
 
+export function formatDateMedium(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
+}
+
 export function formatDateWeekday(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number)
   return new Date(y, m - 1, d).toLocaleDateString("en-US", {
@@ -45,6 +54,18 @@ export function toDateInputValue(date: Date): string {
 export function parseDateInputValue(value: string): Date {
   const [y, m, d] = value.split("-").map(Number)
   return new Date(y, m - 1, d)
+}
+
+export function formatRelativeTime(isoString: string): string {
+  const diffMs = Date.now() - new Date(isoString).getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return "Just now"
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHour = Math.floor(diffMin / 60)
+  if (diffHour < 24) return `${diffHour}h ago`
+  const diffDay = Math.floor(diffHour / 24)
+  if (diffDay < 7) return `${diffDay}d ago`
+  return new Date(isoString).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
 export function initials(name: string): string {

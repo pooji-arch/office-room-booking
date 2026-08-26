@@ -113,14 +113,14 @@ export const supabaseRoomsService: RoomsService = {
     const room = roomRow ? mapRoom(roomRow as RoomRow) : null
     const roomBookable = !!room && !room.deletedAt && room.status === "AVAILABLE"
 
-    let bookingsQuery = supabase
-      .from("bookings")
+    let meetingsQuery = supabase
+      .from("meetings")
       .select("id, start_time, end_time")
       .eq("room_id", id)
       .eq("date", date)
       .neq("status", "CANCELLED")
-    if (excludeBookingId) bookingsQuery = bookingsQuery.neq("id", excludeBookingId)
-    const { data: bookings, error } = await bookingsQuery
+    if (excludeBookingId) meetingsQuery = meetingsQuery.neq("id", excludeBookingId)
+    const { data: bookings, error } = await meetingsQuery
     if (error) throw new Error(error.message)
 
     const result: RoomAvailability = {
