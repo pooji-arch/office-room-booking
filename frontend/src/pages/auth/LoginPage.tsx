@@ -57,9 +57,9 @@ export function LoginPage() {
   return (
     <Card className="shadow-xl shadow-black/5 ring-1 ring-foreground/10 dark:shadow-black/30">
       <CardHeader>
-        <CardTitle className="text-xl">Sign in to RoomBook</CardTitle>
+        <CardTitle className="text-xl">Sign in to MMS</CardTitle>
         <CardDescription>
-          Office Room Booking & Management System
+          Meetings, minutes, and action items — in one place
         </CardDescription>
       </CardHeader>
       <CardContent>
