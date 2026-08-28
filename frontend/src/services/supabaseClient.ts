@@ -12,6 +12,13 @@ if (!url || !anonKey) {
 // matching account — just leaves the page sitting there with no error ever
 // surfaced anywhere in the app). LoginPage handles the redirect explicitly
 // instead, via exchangeCodeForSession, so a failure is a real awaited error.
+//
+// flowType is forced to "pkce" because this library's own default is
+// "implicit" — under implicit flow, Google hands back the session as
+// #access_token=... in the URL hash fragment, never as a ?code= query
+// param, so exchangeCodeForSession (which only ever looks for a code) would
+// silently never fire on a real, successful sign-in. PKCE is what actually
+// delivers the ?code= param LoginPage's redirect handler expects.
 export const supabase = createClient(url, anonKey, {
-  auth: { detectSessionInUrl: false },
+  auth: { detectSessionInUrl: false, flowType: "pkce" },
 })
