@@ -74,6 +74,20 @@ export function LoginPage() {
     }
   }, [user, navigate])
 
+  // If someone starts the Google redirect and then hits the browser's Back
+  // button before finishing (e.g. without picking an account), the browser
+  // often restores this exact page from its back-forward cache instead of
+  // reloading it — so isGoogleLoading is still stuck true from right before
+  // they left, showing a permanent spinner with no way to retry. `pageshow`
+  // with `persisted: true` is the signal that this happened.
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) setIsGoogleLoading(false)
+    }
+    window.addEventListener("pageshow", handlePageShow)
+    return () => window.removeEventListener("pageshow", handlePageShow)
+  }, [])
+
   // Google sign-in redirects the whole browser away and back with either a
   // `code` (success — still needs exchanging for a real session) or an
   // `error`/`error_description` (e.g. no matching account, rejected by the
