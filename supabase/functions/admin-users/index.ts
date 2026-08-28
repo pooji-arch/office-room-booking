@@ -3,7 +3,7 @@ import { createRemoteJWKSet, jwtVerify } from "npm:jose@5"
 
 // Bump this string on every edit. If a test response doesn't show this exact
 // value, the deploy didn't take — that's the whole point of it existing.
-const VERSION = "v6-jwks-local-verify"
+const VERSION = "v7-update-email"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -122,6 +122,25 @@ Deno.serve(async (req) => {
     if (error) return json({ error: error.message }, 400)
     await admin.from("profiles").update({ must_change_password: true }).eq("id", body.id)
     return json({ temporaryPassword: password })
+  }
+
+  // Email lives on auth.users, not profiles — a plain client-side
+  // `.update()` on the profiles table (which is all UsersManagementPage's
+  // regular edit flow can do under RLS) only ever touched the profiles copy,
+  // silently leaving the real sign-in email untouched. Needs the service
+  // role, same as create/resetPassword.
+  if (body.action === "updateEmail") {
+    const { error } = await admin.auth.admin.updateUserById(body.id, {
+      email: body.email,
+      email_confirm: true,
+    })
+    if (error) return json({ error: error.message }, 400)
+    const { error: profileError } = await admin
+      .from("profiles")
+      .update({ email: body.email })
+      .eq("id", body.id)
+    if (profileError) return json({ error: profileError.message }, 400)
+    return json({ success: true })
   }
 
   return json({ error: "Unknown action" }, 400)

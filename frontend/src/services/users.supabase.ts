@@ -77,6 +77,13 @@ export const supabaseUsersService: UsersService = {
   },
 
   async updateUser(id, input) {
+    // Email lives on auth.users, not profiles — changing it needs the
+    // service role, so it goes through the same Edge Function as
+    // create/resetPassword rather than a plain client-side update.
+    if (input.email !== undefined) {
+      await callAdminUsersFunction<{ success: boolean }>({ action: "updateEmail", id, email: input.email })
+    }
+
     const patch: Record<string, unknown> = {}
     if (input.name !== undefined) patch.name = input.name
     if (input.role !== undefined) patch.role = input.role
@@ -84,6 +91,12 @@ export const supabaseUsersService: UsersService = {
     if (input.employeeId !== undefined) patch.employee_id = input.employeeId
     if (input.department !== undefined) patch.department = input.department
     if (input.phone !== undefined) patch.phone = input.phone
+
+    if (Object.keys(patch).length === 0) {
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", id).single()
+      if (error) throw new Error(error.message)
+      return mapUser(data as ProfileRow)
+    }
 
     const { data, error } = await supabase
       .from("profiles")
