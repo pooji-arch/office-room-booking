@@ -17,9 +17,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <Toaster richColors position="top-right" />
         <RealtimeBridge />
         <RouterProvider router={router} />
-        <Toaster richColors position="top-right" />
       </AuthProvider>
     </QueryClientProvider>
   )

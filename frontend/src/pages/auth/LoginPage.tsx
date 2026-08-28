@@ -23,6 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { useAuth } from "@/hooks/useAuth"
+import { supabase } from "@/services/supabaseClient"
 
 const schema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email"),
@@ -55,7 +56,7 @@ function GoogleIcon() {
 }
 
 export function LoginPage() {
-  const { user, login, loginWithGoogle } = useAuth()
+  const { user, login, loginWithGoogle, refresh } = useAuth()
   const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
@@ -65,25 +66,51 @@ export function LoginPage() {
     defaultValues: { email: "", password: "" },
   })
 
-  // Google sign-in redirects the whole browser away and back — by the time
-  // we're back, `user` populates from the normal session-hydration path.
-  // This effect is what actually completes the login for that flow.
+  // Once `user` populates — either from a normal password login or from the
+  // Google exchange below completing — send them where they belong.
   useEffect(() => {
     if (user) {
       navigate(user.role === "ADMIN" ? "/admin/rooms" : "/", { replace: true })
     }
   }, [user, navigate])
 
-  // A rejected Google sign-in (e.g. no matching account) comes back as an
-  // error on the redirect URL rather than a normal promise rejection, since
-  // the whole page reloads through Google and back.
+  // Google sign-in redirects the whole browser away and back with either a
+  // `code` (success — still needs exchanging for a real session) or an
+  // `error`/`error_description` (e.g. no matching account, rejected by the
+  // database trigger). detectSessionInUrl is off specifically so this runs
+  // explicitly and any failure is a real, awaited error we can show —
+  // letting the SDK handle it silently was swallowing rejections with no
+  // feedback at all.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.hash.replace(/^#/, "") || window.location.search)
-    const description = params.get("error_description")
-    if (description) {
-      toast.error(decodeURIComponent(description.replace(/\+/g, " ")))
-      window.history.replaceState(null, "", window.location.pathname)
+    const url = new URL(window.location.href)
+    const code = url.searchParams.get("code")
+    const errorDescription = url.searchParams.get("error_description") ?? url.searchParams.get("error")
+    if (!code && !errorDescription) return
+
+    window.history.replaceState(null, "", window.location.pathname)
+
+    // This is the one place in the whole app where a toast fires on a
+    // completely fresh page load, right as React is still mounting — every
+    // other toast call happens later, from a user-initiated action, well
+    // after Toaster has settled. Confirmed live: calling toast.error()
+    // synchronously here was unreliable (sometimes it never appeared at
+    // all), because it can race Toaster's own mount. Deferring to the next
+    // tick reliably gives it time to be ready.
+    if (errorDescription) {
+      setTimeout(() => toast.error(decodeURIComponent(errorDescription.replace(/\+/g, " "))), 0)
+      return
     }
+
+    setIsGoogleLoading(true)
+    supabase.auth.exchangeCodeForSession(code!).then(({ error }) => {
+      setIsGoogleLoading(false)
+      if (error) {
+        setTimeout(() => toast.error(error.message), 0)
+      } else {
+        refresh()
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function onSubmit(values: FormValues) {
