@@ -32,6 +32,16 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+// Read synchronously so the very first render already knows a Google
+// redirect is being completed — without this, the page would render the
+// full login form for one frame before the effect below has a chance to
+// run, then jump straight to the signed-in app a moment later. That flash
+// of the plain login form (right after what looked like a successful
+// Google sign-in) reads as "did I just get logged out?" to a real user.
+function hasOAuthCode() {
+  return new URL(window.location.href).searchParams.has("code")
+}
+
 // Supabase Auth (GoTrue) never forwards a database trigger's actual
 // RAISE EXCEPTION message to the client — any failure inserting a new
 // auth.users row comes back as this same generic string regardless of what
@@ -73,6 +83,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isCompletingGoogleSignIn, setIsCompletingGoogleSignIn] = useState(hasOAuthCode)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -132,17 +143,23 @@ export function LoginPage() {
     setIsGoogleLoading(true)
     supabase.auth
       .exchangeCodeForSession(code!)
-      .then(({ error }) => {
+      .then(async ({ error }) => {
         if (error) {
+          setIsCompletingGoogleSignIn(false)
           setTimeout(() => toast.error(error.message), 0)
-        } else {
-          // The session is established here, but loading the account
-          // (profile fetch, inactive-status check) happens inside
-          // refresh()/hydrate() — any failure there surfaces its own toast.
-          refresh()
+          return
         }
+        // The session is established here, but loading the account (profile
+        // fetch, inactive-status check) happens inside refresh()/hydrate().
+        // refresh() reports its own outcome so a failure there (which shows
+        // its own toast) can drop back to the real form instead of leaving
+        // "Signing you in…" on screen forever with no `user` ever arriving
+        // to trigger the navigate-away effect above.
+        const me = await refresh()
+        if (!me) setIsCompletingGoogleSignIn(false)
       })
       .catch((err: unknown) => {
+        setIsCompletingGoogleSignIn(false)
         setTimeout(
           () => toast.error(err instanceof Error ? err.message : "Google sign-in failed."),
           0
@@ -174,6 +191,17 @@ export function LoginPage() {
       toast.error(err instanceof Error ? err.message : "Google sign-in failed")
       setIsGoogleLoading(false)
     }
+  }
+
+  if (isCompletingGoogleSignIn) {
+    return (
+      <Card className="shadow-xl shadow-black/5 ring-1 ring-foreground/10 dark:shadow-black/30">
+        <CardContent className="flex flex-col items-center gap-3 py-12">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Signing you in…</p>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (

@@ -10,7 +10,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<AuthUser>
   loginWithGoogle: (redirectTo: string) => Promise<void>
   logout: () => Promise<void>
-  refresh: () => Promise<void>
+  refresh: () => Promise<AuthUser | null>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const me = await authService.me()
       setUser(me)
+      return me
     } catch (err) {
       setUser(null)
       // "Not signed in." is the expected result of every plain page load
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (err instanceof Error && err.message !== "Not signed in.") {
         setTimeout(() => toast.error(err.message), 0)
       }
+      return null
     } finally {
       setIsLoading(false)
     }
