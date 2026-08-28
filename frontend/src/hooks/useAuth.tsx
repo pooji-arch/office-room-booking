@@ -7,6 +7,7 @@ interface AuthContextValue {
   user: AuthUser | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<AuthUser>
+  loginWithGoogle: (redirectTo: string) => Promise<void>
   logout: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -43,13 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result.user
   }
 
+  async function loginWithGoogle(redirectTo: string) {
+    await authService.loginWithGoogle(redirectTo)
+  }
+
   async function logout() {
     await authService.logout()
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, refresh: hydrate }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginWithGoogle, logout, refresh: hydrate }}>
       {children}
     </AuthContext.Provider>
   )

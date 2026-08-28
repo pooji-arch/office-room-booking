@@ -54,6 +54,14 @@ export const supabaseAuthService: AuthService = {
     return { token: data.session.access_token, user }
   },
 
+  async loginWithGoogle(redirectTo) {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    })
+    if (error) throw new Error(error.message)
+  },
+
   async logout() {
     await supabase.auth.signOut()
   },
@@ -63,7 +71,12 @@ export const supabaseAuthService: AuthService = {
       data: { session },
     } = await supabase.auth.getSession()
     if (!session) throw new Error("Not signed in.")
-    return fetchProfile(session.user.id)
+    const user = await fetchProfile(session.user.id)
+    if (user.status === "INACTIVE") {
+      await supabase.auth.signOut()
+      throw new Error("Your account is inactive. Contact an administrator.")
+    }
+    return user
   },
 
   async changePassword({ currentPassword, newPassword }) {

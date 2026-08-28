@@ -37,6 +37,7 @@ export interface ListParams {
 // ---- Auth ----
 export interface AuthService {
   login(email: string, password: string): Promise<LoginResult>
+  loginWithGoogle(redirectTo: string): Promise<void>
   logout(): Promise<void>
   me(): Promise<AuthUser>
   changePassword(input: { currentPassword: string; newPassword: string }): Promise<void>
