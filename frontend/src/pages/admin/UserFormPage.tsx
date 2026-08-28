@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -27,17 +27,72 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { FormPageSkeleton } from "@/components/shared/PageSkeletons"
 import { useCreateUser, useResetPassword, useUpdateUser, useUser } from "@/hooks/useUsers"
 
-const schema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().min(1, "Email is required").email("Enter a valid email"),
-  role: z.enum(["USER", "ADMIN"]),
-  status: z.enum(["ACTIVE", "INACTIVE"]),
-  employeeId: z.string().min(1, "Employee ID is required"),
-  department: z.string().min(1, "Department is required"),
-  phone: z.string().min(1, "Phone number is required"),
-})
+// +91 numbers must have exactly 10 digits after the prefix; any other "+"
+// country code just needs to be all digits after it — matches the same rule
+// enforced server-side in migration 0016, which is the real backstop since
+// this form isn't the only way a phone number could ever be written.
+function isValidPhone(value: string) {
+  if (value.startsWith("+91")) return /^\+91\d{10}$/.test(value)
+  return /^\+\d+$/.test(value)
+}
 
-type FormValues = z.infer<typeof schema>
+// originalPhoneRef lets an edit form re-save a user's existing phone number
+// unchanged even if it predates this format rule (this project's live data
+// already has some, e.g. "123") — same "only enforced going forward" spirit
+// as the server-side trigger, which only checks phone when it actually
+// changes. .current stays undefined in create mode, where there's no
+// existing value to grandfather and every phone number must satisfy the
+// format rule.
+//
+// This reads a ref rather than closing over the value directly so `schema`
+// itself can stay one single, permanently-stable object for the lifetime of
+// the component (built once via useMemo(..., []) below) instead of being
+// rebuilt — a new schema object, and therefore a new resolver — the moment
+// the edited user's data finishes loading. That rebuild-mid-lifecycle
+// was confirmed live to corrupt react-hook-form's Select-backed fields
+// (role/status): form.reset()'s update to whichever field wasn't already
+// sitting at its useForm() default value (ADMIN, or INACTIVE) got silently
+// dropped back to "", blocking the entire submit with no visible error at
+// all, for every existing Admin or Inactive user — a serious pre-existing
+// gap this investigation surfaced, not something introduced by the
+// employee-ID/phone rules themselves.
+function makeSchema(originalPhoneRef: { current: string | undefined }) {
+  return z.object({
+    name: z.string().min(1, "Name is required"),
+    email: z.string().min(1, "Email is required").email("Enter a valid email"),
+    role: z.enum(["USER", "ADMIN"]),
+    status: z.enum(["ACTIVE", "INACTIVE"]),
+    employeeId: z.string().min(1, "Employee ID is required"),
+    department: z.string().min(1, "Department is required"),
+    phone: z
+      .string()
+      .min(1, "Phone number is required")
+      .refine((value) => value === originalPhoneRef.current || isValidPhone(value), (value) => ({
+        message: value.startsWith("+91")
+          ? "A +91 number must have exactly 10 digits after it, e.g. +919876543210"
+          : "Must start with + followed by the country code and number, digits only",
+      })),
+  })
+}
+
+type FormValues = z.infer<ReturnType<typeof makeSchema>>
+
+// Confirmed live (via a temporary debug trace, since this has no other
+// visible symptom): right after a value genuinely changes to a non-default
+// option (e.g. this form's own reset() setting role to "ADMIN" for an
+// existing admin, or status to "INACTIVE"), Radix Select spontaneously
+// fires onValueChange with an empty string once on its own — not from any
+// user interaction — silently wiping the real value back to "" with zero
+// visible error, since neither the Role nor Status field renders a
+// FormMessage. This was completely blocking editing ANY existing Admin or
+// Inactive user. A real SelectItem's value in this app is never empty, so
+// ignoring an empty callback is a safe, targeted guard against Radix's own
+// spurious event rather than a genuine deselection.
+function ignoreSpuriousEmptySelectChange(onChange: (value: string) => void) {
+  return (value: string) => {
+    if (value) onChange(value)
+  }
+}
 
 function TemporaryPasswordCard({
   title,
@@ -96,6 +151,9 @@ export function UserFormPage() {
   const [resetTemporaryPassword, setResetTemporaryPassword] = useState<string | null>(null)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
+  const originalPhoneRef = useRef<string | undefined>(undefined)
+  const schema = useMemo(() => makeSchema(originalPhoneRef), [])
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -111,6 +169,7 @@ export function UserFormPage() {
 
   useEffect(() => {
     if (user) {
+      originalPhoneRef.current = user.phone ?? undefined
       form.reset({
         name: user.name,
         email: user.email,
@@ -236,7 +295,7 @@ export function UserFormPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Role *</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select value={field.value} onValueChange={ignoreSpuriousEmptySelectChange(field.onChange)}>
                         <FormControl>
                           <SelectTrigger className="w-full">
                             <SelectValue />
@@ -256,7 +315,7 @@ export function UserFormPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select value={field.value} onValueChange={ignoreSpuriousEmptySelectChange(field.onChange)}>
                         <FormControl>
                           <SelectTrigger className="w-full">
                             <SelectValue />
@@ -308,7 +367,7 @@ export function UserFormPage() {
                   <FormItem>
                     <FormLabel>Phone Number *</FormLabel>
                     <FormControl>
-                      <Input placeholder="+1 987 654 3210" {...field} />
+                      <Input placeholder="+919876543210" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

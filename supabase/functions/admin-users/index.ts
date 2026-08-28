@@ -3,7 +3,7 @@ import { createRemoteJWKSet, jwtVerify } from "npm:jose@5"
 
 // Bump this string on every edit. If a test response doesn't show this exact
 // value, the deploy didn't take — that's the whole point of it existing.
-const VERSION = "v7-update-email"
+const VERSION = "v9-fix-employee-id-dupe-check"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,6 +74,48 @@ Deno.serve(async (req) => {
   const body = await req.json()
 
   if (body.action === "create") {
+    // Checked here, before ever calling createUser, rather than relying on
+    // the profiles-table triggers (migration 0016) to reject it: a trigger
+    // exception raised while GoTrue is inserting the new auth.users row (and
+    // its profile) comes back from createUser() as one of its own generic
+    // messages ("Database error creating new user") regardless of which rule
+    // actually failed — confirmed live, not assumed. Checking explicitly
+    // here gives a real, specific reason instead. The triggers stay in place
+    // as the authoritative backstop for every other way a profile row can be
+    // written (e.g. a plain profile update, which isn't affected by this
+    // GoTrue-wrapping behavior at all).
+    if (body.employeeId) {
+      // .limit(1) + array-length check, not .maybeSingle() — this project's
+      // live data already has real pre-existing employee_id duplicates
+      // (grandfathered in by migration 0016, which only enforces uniqueness
+      // going forward), and .maybeSingle() errors out on more than one match
+      // instead of just returning it, which silently skipped this whole
+      // check for exactly the IDs that most needed it caught live.
+      const { data: existing } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("employee_id", body.employeeId)
+        .limit(1)
+      if (existing && existing.length > 0) {
+        return json({ error: "This employee ID is already in use by another user." }, 400)
+      }
+    }
+    if (body.phone) {
+      const isValidPhone = (body.phone as string).startsWith("+91")
+        ? /^\+91\d{10}$/.test(body.phone)
+        : /^\+\d+$/.test(body.phone)
+      if (!isValidPhone) {
+        return json(
+          {
+            error: (body.phone as string).startsWith("+91")
+              ? "A +91 phone number must have exactly 10 digits after it."
+              : "Phone number must start with + followed only by digits (no spaces or symbols).",
+          },
+          400
+        )
+      }
+    }
+
     const password = tempPassword()
     const { data, error } = await admin.auth.admin.createUser({
       email: body.email,

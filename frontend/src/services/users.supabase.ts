@@ -32,9 +32,20 @@ function mapUser(row: ProfileRow): User {
 
 // Deployed in Supabase as "super-processor" (named that way when created
 // through the dashboard UI, rather than "admin-users" as in the source tree).
-async function callAdminUsersFunction<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("super-processor", { body })
-  if (error) throw new Error(error.message)
+async function callAdminUsersFunction<T>(requestBody: Record<string, unknown>): Promise<T> {
+  const { data, error, response } = await supabase.functions.invoke("super-processor", {
+    body: requestBody,
+  })
+  if (error) {
+    // supabase-js's own error.message is always the generic "Edge Function
+    // returned a non-2xx status code" for ANY failure response, regardless
+    // of what our function actually said — confirmed live (a rejected
+    // "create" call showed that exact generic text instead of "This
+    // employee ID is already in use by another user."). The real reason
+    // only lives in the raw response body, which is still unread here.
+    const responseBody: { error?: string } | null = await response?.json().catch(() => null)
+    throw new Error(responseBody?.error ?? error.message)
+  }
   if (data?.error) throw new Error(data.error)
   return data as T
 }
