@@ -102,14 +102,25 @@ export function LoginPage() {
     }
 
     setIsGoogleLoading(true)
-    supabase.auth.exchangeCodeForSession(code!).then(({ error }) => {
-      setIsGoogleLoading(false)
-      if (error) {
-        setTimeout(() => toast.error(error.message), 0)
-      } else {
-        refresh()
-      }
-    })
+    supabase.auth
+      .exchangeCodeForSession(code!)
+      .then(({ error }) => {
+        if (error) {
+          setTimeout(() => toast.error(error.message), 0)
+        } else {
+          // The session is established here, but loading the account
+          // (profile fetch, inactive-status check) happens inside
+          // refresh()/hydrate() — any failure there surfaces its own toast.
+          refresh()
+        }
+      })
+      .catch((err: unknown) => {
+        setTimeout(
+          () => toast.error(err instanceof Error ? err.message : "Google sign-in failed."),
+          0
+        )
+      })
+      .finally(() => setIsGoogleLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

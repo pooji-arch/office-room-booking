@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { toast } from "sonner"
 import type { AuthUser } from "@/types"
 import { authService } from "@/services/auth"
 import { supabase } from "@/services/supabaseClient"
@@ -22,8 +23,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const me = await authService.me()
       setUser(me)
-    } catch {
+    } catch (err) {
       setUser(null)
+      // "Not signed in." is the expected result of every plain page load
+      // before any login has happened — silent. Anything else means a
+      // session genuinely exists (e.g. a Google OAuth exchange just
+      // succeeded) but loading the account failed for a real reason
+      // (inactive status, profile fetch error) — that deserves to be seen
+      // instead of just silently bouncing back to the login page.
+      if (err instanceof Error && err.message !== "Not signed in.") {
+        setTimeout(() => toast.error(err.message), 0)
+      }
     } finally {
       setIsLoading(false)
     }
