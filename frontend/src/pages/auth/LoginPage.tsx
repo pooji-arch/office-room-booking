@@ -32,6 +32,19 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+// Supabase Auth (GoTrue) never forwards a database trigger's actual
+// RAISE EXCEPTION message to the client — any failure inserting a new
+// auth.users row comes back as this same generic string regardless of what
+// the trigger actually said. The only trigger that can reject an insert
+// here is reject_unrecognized_oauth_signup() (see migration 0015), so this
+// generic message always means exactly one thing in this app.
+function friendlyOAuthError(message: string): string {
+  if (message === "Database error saving new user") {
+    return "No account found for this email. Contact your administrator."
+  }
+  return message
+}
+
 function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
@@ -111,7 +124,8 @@ export function LoginPage() {
     // all), because it can race Toaster's own mount. Deferring to the next
     // tick reliably gives it time to be ready.
     if (errorDescription) {
-      setTimeout(() => toast.error(decodeURIComponent(errorDescription.replace(/\+/g, " "))), 0)
+      const message = decodeURIComponent(errorDescription.replace(/\+/g, " "))
+      setTimeout(() => toast.error(friendlyOAuthError(message)), 0)
       return
     }
 
