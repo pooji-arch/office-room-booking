@@ -32,7 +32,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     hydrate()
     const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") setUser(null)
+      if (event === "SIGNED_OUT") {
+        setUser(null)
+      } else if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        // INITIAL_SESSION is what actually fires right after an OAuth
+        // redirect (Google sign-in) — it's the "just loaded, here's the
+        // session Supabase found" event, distinct from SIGNED_IN. Both
+        // happen asynchronously after mount, so the one-time hydrate() call
+        // above can easily have already run and found nothing yet.
+        hydrate()
+      }
     })
     return () => subscription.subscription.unsubscribe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
