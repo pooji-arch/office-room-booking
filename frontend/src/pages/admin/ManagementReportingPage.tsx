@@ -1,9 +1,27 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { AlertTriangle, Building2, CalendarRange, CheckCircle2, History, Pencil, TrendingUp } from "lucide-react"
+import {
+  AlertTriangle,
+  CalendarRange,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Download,
+  History,
+  Pencil,
+  TrendingUp,
+} from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { StatusBadge } from "@/components/shared/StatusBadge"
+import { Sparkline } from "@/components/shared/Sparkline"
 import { CardContentSkeleton } from "@/components/shared/PageSkeletons"
 import {
   useActionItemStatusHistory,
@@ -11,9 +29,10 @@ import {
   useMeetings,
   useMinutesRevisions,
 } from "@/hooks/useMeetings"
+import { meetingDisplayStatus } from "@/lib/meeting-buckets"
 import { formatDateShort, formatRelativeTime, initials } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import type { ActionItemStatus, ActionItemWithMeeting } from "@/types"
+import type { ActionItemStatus, ActionItemWithMeeting, Meeting } from "@/types"
 
 type AuditEntry =
   | { kind: "status_change"; id: string; meetingId: string; changedAt: string; text: string }
@@ -39,48 +58,220 @@ function barColorClass(status: ActionItemStatus) {
   return "bg-primary"
 }
 
-function pctToneClass(pct: number) {
-  if (pct >= 70) return "text-success"
-  if (pct >= 40) return "text-warning-foreground"
-  return "text-destructive"
+// ---- date-range math -------------------------------------------------
+// One range control drives every range-scoped section below (the 4 stat
+// cards and the department donut/health buckets) — the due-soon table,
+// timeline, and audit trail stay unscoped since they're inherently
+// "what's true right now" views, not activity-in-a-period views.
+
+type RangePreset = "week" | "last7" | "month" | "all"
+
+const RANGE_LABELS: Record<RangePreset, string> = {
+  week: "This Week",
+  last7: "Last 7 Days",
+  month: "This Month",
+  all: "All Time",
 }
 
-function departmentBreakdown(items: ActionItemWithMeeting[]) {
-  const byDept = new Map<string, ActionItemWithMeeting[]>()
-  for (const item of items) {
-    const dept = item.meetingDepartment ?? "General"
-    if (!byDept.has(dept)) byDept.set(dept, [])
-    byDept.get(dept)!.push(item)
+function isoDate(d: Date) {
+  return d.toISOString().slice(0, 10)
+}
+function addDays(d: Date, n: number) {
+  const r = new Date(d)
+  r.setDate(r.getDate() + n)
+  return r
+}
+function startOfWeek(d: Date) {
+  const day = d.getDay()
+  return addDays(d, day === 0 ? -6 : 1 - day)
+}
+
+function getRange(preset: RangePreset): { from: string; to: string; label: string } {
+  const today = new Date()
+  if (preset === "last7") {
+    const from = addDays(today, -6)
+    return { from: isoDate(from), to: isoDate(today), label: `${formatDateShort(isoDate(from))} – ${formatDateShort(isoDate(today))}` }
   }
-  return [...byDept.entries()]
-    .map(([dept, deptItems]) => ({
-      dept,
-      count: deptItems.length,
-      pct: Math.round((deptItems.filter((i) => i.status === "DONE").length / deptItems.length) * 100),
-    }))
-    .sort((a, b) => b.pct - a.pct)
+  if (preset === "month") {
+    const from = new Date(today.getFullYear(), today.getMonth(), 1)
+    return { from: isoDate(from), to: isoDate(today), label: `${formatDateShort(isoDate(from))} – ${formatDateShort(isoDate(today))}` }
+  }
+  if (preset === "all") {
+    return { from: "2000-01-01", to: "2100-01-01", label: "All time" }
+  }
+  const from = startOfWeek(today)
+  const to = addDays(from, 6)
+  return { from: isoDate(from), to: isoDate(to), label: `${formatDateShort(isoDate(from))} – ${formatDateShort(isoDate(to))}` }
 }
 
-const KPI_CARDS = [
-  { key: "tracked", label: "Meetings tracked", icon: CalendarRange, tone: "bg-primary/10 text-primary" },
-  { key: "held", label: "Meetings held", icon: CheckCircle2, tone: "bg-success/10 text-success" },
-  { key: "closure", label: "Action item closure rate", icon: TrendingUp, tone: "bg-chart-4/10 text-chart-4" },
-  { key: "delayed", label: "Delayed items", icon: AlertTriangle, tone: "bg-warning/15 text-warning-foreground" },
-] as const
+function getPreviousRange(from: string, to: string) {
+  const fromD = new Date(from)
+  const toD = new Date(to)
+  const lengthDays = Math.round((toD.getTime() - fromD.getTime()) / 86400000) + 1
+  const prevTo = addDays(fromD, -1)
+  const prevFrom = addDays(prevTo, -(lengthDays - 1))
+  return { from: isoDate(prevFrom), to: isoDate(prevTo) }
+}
+
+function pct(count: number, total: number) {
+  return total === 0 ? 0 : Math.round((count / total) * 100)
+}
+
+// Delta color follows direction × whether up is good for THIS metric — more
+// meetings tracked is good, more delayed items is not.
+function trendDelta(current: number, previous: number, upIsGood: boolean, unit: "count" | "points" = "count") {
+  if (current === previous) return { text: "No change vs last period", tone: "neutral" as const }
+  if (previous === 0) return { text: "New activity vs last period", tone: upIsGood ? ("success" as const) : ("warning" as const) }
+  const isUp = current > previous
+  const good = isUp === upIsGood
+  const magnitude = unit === "points" ? `${Math.abs(current - previous)}pp` : `${Math.abs(Math.round(((current - previous) / previous) * 100))}%`
+  return { text: `${isUp ? "↑" : "↓"} ${magnitude} vs last period`, tone: good ? ("success" as const) : ("destructive" as const) }
+}
+
+const TREND_TONE_CLASS = {
+  success: "text-success",
+  destructive: "text-destructive",
+  warning: "text-warning",
+  neutral: "text-muted-foreground",
+} as const
+
+function exportReportCsv(items: ActionItemWithMeeting[]) {
+  const header = ["Title", "Meeting", "Department", "Owner", "Due Date", "Priority", "Status"]
+  const rows = items.map((i) => [
+    i.title,
+    i.meetingTitle,
+    i.meetingDepartment ?? "",
+    i.ownerName ?? "",
+    i.dueDate ?? "",
+    i.priority,
+    STATUS_LABEL[i.status],
+  ])
+  const csv = [header, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n")
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `management-report-${isoDate(new Date())}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function dailyCounts(dates: string[], last7: string[]) {
+  return last7.map((day) => dates.filter((d) => d === day).length)
+}
 
 export function ManagementReportingPage() {
   const navigate = useNavigate()
-  const { data: allMeetings, isLoading: isLoadingMeetings } = useMeetings({ pageSize: 1 })
-  const { data: completedMeetings, isLoading: isLoadingCompleted } = useMeetings({
-    bucket: "completed",
-    pageSize: 1,
-  })
+  const [rangePreset, setRangePreset] = useState<RangePreset>("week")
+
+  const { data: meetingsPage, isLoading: isLoadingMeetings } = useMeetings({ pageSize: 500 })
   const { data: actionItems, isLoading: isLoadingItems } = useAllActionItems()
   const { data: statusHistory, isLoading: isLoadingStatusHistory } = useActionItemStatusHistory({ limit: 20 })
   const { data: minutesRevisions, isLoading: isLoadingRevisions } = useMinutesRevisions({ limit: 20 })
 
-  const isLoading = isLoadingMeetings || isLoadingCompleted || isLoadingItems
+  const isLoading = isLoadingMeetings || isLoadingItems
   const isLoadingAudit = isLoadingStatusHistory || isLoadingRevisions
+
+  const meetings = useMemo<Meeting[]>(() => meetingsPage?.data ?? [], [meetingsPage])
+  const items = useMemo(() => actionItems ?? [], [actionItems])
+
+  const range = useMemo(() => getRange(rangePreset), [rangePreset])
+  const prevRange = useMemo(() => getPreviousRange(range.from, range.to), [range])
+  const hasComparison = rangePreset !== "all"
+
+  const meetingsInRange = useMemo(
+    () => meetings.filter((m) => m.date >= range.from && m.date <= range.to),
+    [meetings, range]
+  )
+  const meetingsInPrevRange = useMemo(
+    () => meetings.filter((m) => m.date >= prevRange.from && m.date <= prevRange.to),
+    [meetings, prevRange]
+  )
+  const itemsInRange = useMemo(
+    () => items.filter((i) => i.createdAt.slice(0, 10) >= range.from && i.createdAt.slice(0, 10) <= range.to),
+    [items, range]
+  )
+  const itemsInPrevRange = useMemo(
+    () => items.filter((i) => i.createdAt.slice(0, 10) >= prevRange.from && i.createdAt.slice(0, 10) <= prevRange.to),
+    [items, prevRange]
+  )
+
+  const trackedCount = meetingsInRange.length
+  const heldCount = meetingsInRange.filter((m) => meetingDisplayStatus(m) === "COMPLETED").length
+  const heldPrevCount = meetingsInPrevRange.filter((m) => meetingDisplayStatus(m) === "COMPLETED").length
+  const closureRate = pct(itemsInRange.filter((i) => i.status === "DONE").length, itemsInRange.length)
+  const closureRatePrev = pct(itemsInPrevRange.filter((i) => i.status === "DONE").length, itemsInPrevRange.length)
+  const delayedCount = itemsInRange.filter((i) => i.status === "DELAYED").length
+  const delayedPrevCount = itemsInPrevRange.filter((i) => i.status === "DELAYED").length
+
+  const last7Days = useMemo(() => Array.from({ length: 7 }, (_, i) => isoDate(addDays(new Date(), -(6 - i)))), [])
+  const trackedSparkline = useMemo(() => dailyCounts(meetings.map((m) => m.date), last7Days), [meetings, last7Days])
+  const heldSparkline = useMemo(
+    () =>
+      last7Days.map((day) => meetings.filter((m) => m.date === day && meetingDisplayStatus(m) === "COMPLETED").length),
+    [meetings, last7Days]
+  )
+  const closureSparkline = useMemo(
+    () =>
+      last7Days.map((day) => {
+        const dayItems = items.filter((i) => i.createdAt.slice(0, 10) === day)
+        return pct(dayItems.filter((i) => i.status === "DONE").length, dayItems.length)
+      }),
+    [items, last7Days]
+  )
+  const delayedSparkline = useMemo(
+    () => dailyCounts(items.filter((i) => i.status === "DELAYED").map((i) => i.createdAt.slice(0, 10)), last7Days),
+    [items, last7Days]
+  )
+
+  const KPI_CARDS = [
+    {
+      key: "tracked",
+      label: "Meetings tracked",
+      icon: CalendarRange,
+      tone: "bg-primary/10 text-primary",
+      value: String(trackedCount),
+      delta: hasComparison ? trendDelta(trackedCount, meetingsInPrevRange.length, true) : null,
+      sparkline: trackedSparkline,
+    },
+    {
+      key: "held",
+      label: "Meetings held",
+      icon: CheckCircle2,
+      tone: "bg-success/10 text-success",
+      value: String(heldCount),
+      delta: hasComparison ? trendDelta(heldCount, heldPrevCount, true) : null,
+      sparkline: heldSparkline,
+    },
+    {
+      key: "closure",
+      label: "Action item closure rate",
+      icon: TrendingUp,
+      tone: "bg-chart-4/10 text-chart-4",
+      value: `${closureRate}%`,
+      delta: hasComparison ? trendDelta(closureRate, closureRatePrev, true, "points") : null,
+      sparkline: closureSparkline,
+    },
+    {
+      key: "delayed",
+      label: "Delayed items",
+      icon: AlertTriangle,
+      tone: "bg-warning/10 text-warning",
+      value: String(delayedCount),
+      delta: hasComparison ? trendDelta(delayedCount, delayedPrevCount, false) : null,
+      sparkline: delayedSparkline,
+    },
+  ] as const
+
+  const dueSoon = useMemo(() => {
+    const todayStr = isoDate(new Date())
+    const horizon = isoDate(addDays(new Date(), 14))
+    return items
+      .filter((i) => i.status !== "DONE" && i.dueDate && i.dueDate >= todayStr && i.dueDate <= horizon)
+      .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""))
+  }, [items])
 
   const auditEntries: AuditEntry[] = useMemo(() => {
     const fromStatus: AuditEntry[] = (statusHistory ?? []).map((h) => ({
@@ -103,29 +294,37 @@ export function ManagementReportingPage() {
       .slice(0, 15)
   }, [statusHistory, minutesRevisions])
 
-  const totalMeetings = allMeetings?.pagination.total ?? 0
-  const heldMeetings = completedMeetings?.pagination.total ?? 0
-  const items = useMemo(() => actionItems ?? [], [actionItems])
-  const closureRate = items.length
-    ? Math.round((items.filter((i) => i.status === "DONE").length / items.length) * 100)
-    : 0
-  const delayedCount = items.filter((i) => i.status === "DELAYED").length
-  const byDepartment = useMemo(() => departmentBreakdown(items), [items])
-
-  const kpiValues: Record<(typeof KPI_CARDS)[number]["key"], string> = {
-    tracked: String(totalMeetings),
-    held: String(heldMeetings),
-    closure: `${closureRate}%`,
-    delayed: String(delayedCount),
-  }
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Management Reporting</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          A live rollup of meeting activity and action item health across the organization.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Management Reporting</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            A live rollup of meeting activity and action item health across the organization.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <CalendarRange className="size-4" />
+                {range.label}
+                <ChevronDown className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {(Object.keys(RANGE_LABELS) as RangePreset[]).map((preset) => (
+                <DropdownMenuItem key={preset} onClick={() => setRangePreset(preset)}>
+                  {RANGE_LABELS[preset]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button size="sm" onClick={() => exportReportCsv(items)} disabled={items.length === 0}>
+            <Download className="size-4" />
+            Export Report
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -144,18 +343,24 @@ export function ManagementReportingPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {KPI_CARDS.map(({ key, label, icon: Icon, tone }) => (
+            {KPI_CARDS.map(({ key, label, icon: Icon, tone, value, delta, sparkline }) => (
               <Card
                 key={key}
-                className="transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5"
+                className="overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5"
               >
                 <CardContent className="space-y-3 pt-5">
-                  <div className={cn("flex size-9 items-center justify-center rounded-lg", tone)}>
-                    <Icon className="size-4.5" />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className={cn("flex size-9 items-center justify-center rounded-lg", tone)}>
+                      <Icon className="size-4.5" />
+                    </div>
+                    <Sparkline values={sparkline} className="h-7 w-16 shrink-0" />
                   </div>
                   <div>
-                    <p className="text-3xl font-bold tabular-nums">{kpiValues[key]}</p>
+                    <p className="text-3xl font-bold">{value}</p>
                     <p className="mt-1 text-sm text-muted-foreground">{label}</p>
+                    {delta && (
+                      <p className={cn("mt-1.5 text-xs font-medium", TREND_TONE_CLASS[delta.tone])}>{delta.text}</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -165,34 +370,58 @@ export function ManagementReportingPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Building2 className="size-4 text-muted-foreground" />
-                Action items by department
+                <Clock className="size-4 text-muted-foreground" />
+                Action items approaching due
+                <span className="font-normal text-muted-foreground">— next 14 days</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1">
-              {byDepartment.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No action items yet.</p>
+            <CardContent className="max-h-[22rem] overflow-y-auto p-0">
+              {dueSoon.length === 0 ? (
+                <p className="px-6 py-4 text-sm text-muted-foreground">Nothing due in the next 14 days.</p>
               ) : (
-                byDepartment.map(({ dept, pct, count }) => (
-                  <div
-                    key={dept}
-                    className="flex items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-muted/50"
-                  >
-                    <span className="w-28 shrink-0 truncate font-medium">{dept}</span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all duration-500"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <span className={cn("w-12 shrink-0 text-right font-semibold tabular-nums", pctToneClass(pct))}>
-                      {pct}%
-                    </span>
-                    <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
-                      {count} item{count === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                ))
+                <table className="w-full text-sm">
+                  <thead className="text-left text-xs text-muted-foreground">
+                    <tr>
+                      <th className="px-6 py-2 font-medium">Action Item</th>
+                      <th className="px-3 py-2 font-medium">Meeting</th>
+                      <th className="px-3 py-2 font-medium">Owner</th>
+                      <th className="px-3 py-2 font-medium">Due Date</th>
+                      <th className="px-3 py-2 font-medium">Priority</th>
+                      <th className="px-3 py-2 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dueSoon.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="cursor-pointer border-t transition-colors hover:bg-muted/50"
+                        onClick={() => navigate(`/admin/meetings/${item.meetingId}`)}
+                      >
+                        <td className="max-w-56 truncate px-6 py-2.5 font-medium">{item.title}</td>
+                        <td className="max-w-40 truncate px-3 py-2.5 text-muted-foreground">{item.meetingTitle}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="size-6 shrink-0">
+                              <AvatarFallback className="bg-accent text-[10px] text-accent-foreground">
+                                {item.ownerName ? initials(item.ownerName) : "—"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate text-muted-foreground">{item.ownerName ?? "Unassigned"}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
+                          {formatDateShort(item.dueDate!)}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <StatusBadge status={item.priority} />
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <StatusBadge status={item.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </CardContent>
           </Card>
