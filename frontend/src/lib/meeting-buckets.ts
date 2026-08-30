@@ -57,14 +57,21 @@ export function matchesBucket(m: Meeting, bucket?: MeetingBucket) {
 }
 
 // Completed/Cancelled are terminal and always win. Otherwise a meeting that
-// has ever been rescheduled/reassigned (reassignedAt set) reads as
-// "Rescheduled" rather than plain "Confirmed", so it stays identifiable —
-// but it's never "Pending" just for not having started yet.
+// has ever had its schedule changed reads as "Rescheduled" rather than plain
+// "Confirmed", so it stays identifiable — but it's never "Pending" just for
+// not having started yet.
+//
+// Checks rescheduledAt, not just reassignedAt: reassignedAt is set only by
+// an admin's Edit & Reassign action (it's protected by a DB trigger that
+// rejects a bare organizer from ever writing to it, confirmed live), so a
+// plain self-service reschedule had no way to ever flip this status before
+// rescheduledAt existed — it read "Confirmed" forever despite genuinely
+// having reschedule history. rescheduledAt is set by both paths.
 export function meetingDisplayStatus(
   m: Meeting
 ): "CONFIRMED" | "RESCHEDULED" | "CANCELLED" | "COMPLETED" {
   if (m.status === "CANCELLED") return "CANCELLED"
   if (isCompleted(m)) return "COMPLETED"
-  if (m.reassignedAt) return "RESCHEDULED"
+  if (m.reassignedAt || m.rescheduledAt) return "RESCHEDULED"
   return "CONFIRMED"
 }

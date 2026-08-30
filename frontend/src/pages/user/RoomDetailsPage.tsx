@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -60,7 +60,21 @@ export function RoomDetailsPage() {
     initialDateParam ? parseDateInputValue(initialDateParam) : new Date()
   )
   const dateStr = toDateInputValue(selectedDate)
-  const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null)
+  // Keyed by date so switching to a different date and back doesn't lose the
+  // slot you'd already picked for the original date — previously a single
+  // selectedSlot reset to null on every date change (see the removed effect
+  // below), forcing a full re-pick any time you touched the date twice.
+  const [slotsByDate, setSlotsByDate] = useState<Record<string, { start: string; end: string }>>({})
+  const selectedSlot = slotsByDate[dateStr] ?? null
+  function setSelectedSlot(slot: { start: string; end: string } | null) {
+    setSlotsByDate((prev) => {
+      if (!slot) {
+        const { [dateStr]: _removed, ...rest } = prev
+        return rest
+      }
+      return { ...prev, [dateStr]: slot }
+    })
+  }
 
   const [dateTimeOpen, setDateTimeOpen] = useState(false)
 
@@ -84,10 +98,6 @@ export function RoomDetailsPage() {
       department: searchParams.get("department") ?? "",
     },
   })
-
-  useEffect(() => {
-    setSelectedSlot(null)
-  }, [dateStr])
 
   async function onSubmit(values: FormValues) {
     if (!id || !user) return
@@ -249,7 +259,8 @@ export function RoomDetailsPage() {
                                 key={dateStr}
                                 date={dateStr}
                                 bookedRanges={availability?.bookedRanges ?? []}
-                                defaultStart={searchParams.get("time") ?? undefined}
+                                defaultStart={selectedSlot?.start ?? searchParams.get("time") ?? undefined}
+                                defaultEnd={selectedSlot?.end}
                                 onChange={setSelectedSlot}
                               />
                             )}

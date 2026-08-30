@@ -13,6 +13,7 @@ import {
 import { EmptyState } from "@/components/shared/EmptyState"
 import { RoomCard } from "@/components/shared/RoomCard"
 import { useRooms } from "@/hooks/useRooms"
+import { useMeetings } from "@/hooks/useMeetings"
 import { BUSINESS_HOURS_END, BUSINESS_HOURS_START } from "@/lib/business-hours"
 
 const CAPACITY_OPTIONS = [
@@ -43,9 +44,31 @@ export function HomePage() {
   // side here, not server side.
   const { data, isLoading } = useRooms({ search: applied.search, pageSize: 50 })
 
+  // Date+time search previously did nothing at all — the inputs were
+  // captured in state but never actually used to filter anything. Fetching
+  // every meeting on the chosen date (no room filter — this app's meetings
+  // SELECT RLS is already open to any authenticated user) lets us exclude
+  // any room that's already booked at that exact time, client-side.
+  const hasDateTimeSearch = !!applied.date && !!applied.time
+  const { data: dayMeetings } = useMeetings(
+    { dateFrom: applied.date, dateTo: applied.date, pageSize: 200 },
+    { enabled: hasDateTimeSearch }
+  )
+
+  function isRoomBusyAtSearchedTime(roomId: string) {
+    if (!hasDateTimeSearch) return false
+    return (dayMeetings?.data ?? []).some(
+      (m) =>
+        m.roomId === roomId &&
+        m.status !== "CANCELLED" &&
+        m.startTime <= applied.time &&
+        applied.time < m.endTime
+    )
+  }
+
   const minCapacity = applied.capacity === "any" ? 0 : Number(applied.capacity)
   const rooms = (data?.data ?? []).filter(
-    (r) => r.status !== "UNAVAILABLE" && r.capacity >= minCapacity
+    (r) => r.status !== "UNAVAILABLE" && r.capacity >= minCapacity && !isRoomBusyAtSearchedTime(r.id)
   )
   function isDefault(f: Filters) {
     return f.search === "" && f.date === "" && f.time === "" && f.capacity === "any"

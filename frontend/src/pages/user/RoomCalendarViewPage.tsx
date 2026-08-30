@@ -58,7 +58,7 @@ export function RoomCalendarViewPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon-sm" onClick={() => navigate(`/rooms/${id}`)}>
+        <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="size-4" />
         </Button>
         <h1 className="text-2xl font-semibold tracking-tight">{room.name} · Calendar</h1>

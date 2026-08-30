@@ -11,6 +11,7 @@ import type {
   ReassignMeetingInput,
   RescheduleMeetingInput,
   UpdateActionItemInput,
+  UpdateAgendaItemInput,
 } from "@/services/types"
 import type { ActionItemStatus, RsvpStatus } from "@/types"
 import { roomKeys } from "./useRooms"
@@ -174,6 +175,24 @@ export function useAddAgendaItem() {
   return useMutation({
     mutationFn: ({ meetingId, input }: { meetingId: string; input: AddAgendaItemInput }) =>
       meetingsService.addAgendaItem(meetingId, input),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: meetingKeys.agendaItems(variables.meetingId) })
+    },
+  })
+}
+
+export function useUpdateAgendaItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      meetingId,
+      agendaItemId,
+      input,
+    }: {
+      meetingId: string
+      agendaItemId: string
+      input: UpdateAgendaItemInput
+    }) => meetingsService.updateAgendaItem(meetingId, agendaItemId, input),
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: meetingKeys.agendaItems(variables.meetingId) })
     },

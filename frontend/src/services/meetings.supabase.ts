@@ -23,6 +23,7 @@ import type {
   ReassignMeetingInput,
   RescheduleMeetingInput,
   UpdateActionItemInput,
+  UpdateAgendaItemInput,
 } from "./types"
 
 interface MeetingRow {
@@ -51,6 +52,7 @@ interface MeetingRow {
   reassigned_at: string | null
   reassigned_by_name: string | null
   reassignment_reason: string | null
+  rescheduled_at: string | null
   created_at: string
 }
 
@@ -83,6 +85,7 @@ function mapMeeting(row: MeetingRow): Meeting {
     reassignedAt: row.reassigned_at ?? undefined,
     reassignedByName: row.reassigned_by_name ?? undefined,
     reassignmentReason: row.reassignment_reason ?? undefined,
+    rescheduledAt: row.rescheduled_at ?? undefined,
     createdAt: row.created_at,
   }
 }
@@ -501,6 +504,7 @@ export const supabaseMeetingsService: MeetingsService = {
         reassigned_at: new Date().toISOString(),
         reassigned_by_name: reassignedByName,
         reassignment_reason: input.reason,
+        rescheduled_at: new Date().toISOString(),
       })
       .eq("id", id)
       .select("*")
@@ -510,9 +514,21 @@ export const supabaseMeetingsService: MeetingsService = {
   },
 
   async rescheduleMeeting(id, input: RescheduleMeetingInput) {
+    // rescheduled_at (migration 0017), not reassigned_at — reassigned_at is
+    // protected by a column-guard trigger that only an admin can write to
+    // (confirmed live: a plain organizer's self-service reschedule got
+    // rejected outright the moment it touched that column, even on their
+    // own meeting). rescheduled_at is a separate, unprotected column that
+    // exists purely so meetingDisplayStatus() has something to key off for
+    // ANY reschedule, not just an admin's.
     const { data, error } = await supabase
       .from("meetings")
-      .update({ date: input.date, start_time: input.startTime, end_time: input.endTime })
+      .update({
+        date: input.date,
+        start_time: input.startTime,
+        end_time: input.endTime,
+        rescheduled_at: new Date().toISOString(),
+      })
       .eq("id", id)
       .select("*")
       .single()
@@ -615,6 +631,21 @@ export const supabaseMeetingsService: MeetingsService = {
         owner_id: input.ownerId || null,
         allotted_minutes: input.allottedMinutes ?? 10,
       })
+      .select("*, owner:profiles(name)")
+      .single()
+    if (error) throw friendlyError(error)
+    return mapAgendaItem(data as unknown as AgendaItemRow)
+  },
+
+  async updateAgendaItem(_meetingId, agendaItemId, input: UpdateAgendaItemInput) {
+    const { data, error } = await supabase
+      .from("agenda_items")
+      .update({
+        ...(input.topic !== undefined && { topic: input.topic }),
+        ...(input.ownerId !== undefined && { owner_id: input.ownerId || null }),
+        ...(input.allottedMinutes !== undefined && { allotted_minutes: input.allottedMinutes }),
+      })
+      .eq("id", agendaItemId)
       .select("*, owner:profiles(name)")
       .single()
     if (error) throw friendlyError(error)

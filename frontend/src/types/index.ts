@@ -82,6 +82,7 @@ export interface Meeting {
   reassignedAt?: string
   reassignedByName?: string
   reassignmentReason?: string
+  rescheduledAt?: string
   createdAt: string
 }
 

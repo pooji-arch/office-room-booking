@@ -124,7 +124,7 @@ export function MeetingParticipantsCard({
                     </>
                   )}
 
-                  {!isOrganizerOrAdmin && isMe && p.rsvpStatus !== "ACCEPTED" && (
+                  {isMe && p.rsvpStatus !== "ACCEPTED" && (
                     <Button size="sm" onClick={() => handleRsvp(p, "ACCEPTED")} disabled={updateRsvp.isPending}>
                       {updateRsvp.isPending ? (
                         <Loader2 className="size-3.5 animate-spin" />
@@ -134,7 +134,7 @@ export function MeetingParticipantsCard({
                       Accept
                     </Button>
                   )}
-                  {!isOrganizerOrAdmin && isMe && p.rsvpStatus !== "DECLINED" && (
+                  {isMe && p.rsvpStatus !== "DECLINED" && (
                     <Button
                       variant="outline"
                       size="sm"

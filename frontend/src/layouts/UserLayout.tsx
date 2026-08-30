@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Bell, HelpCircle, Home, LogOut, Menu, Presentation, User } from "lucide-react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed"
 import { useSidebarWidth } from "@/hooks/useSidebarWidth"
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications"
+import { useScrollRestoration } from "@/hooks/useScrollRestoration"
 
 export function UserLayout() {
   const { logout } = useAuth()
@@ -19,6 +20,8 @@ export function UserLayout() {
   const [sidebarWidth, setSidebarWidth] = useSidebarWidth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { data: unreadCount } = useUnreadNotificationsCount()
+  const mainRef = useRef<HTMLElement>(null)
+  useScrollRestoration(mainRef)
 
   const NAV_SECTIONS: SidebarNavSection[] = [
     {
@@ -73,7 +76,7 @@ export function UserLayout() {
           </Button>
           <Logo />
         </div>
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-7xl px-6 py-6 md:px-8 md:py-8">
             <Outlet />
           </div>

@@ -140,7 +140,12 @@ export function ActionItemDialog({
 
           <div>
             <Label className="mb-1.5">Due Date (optional)</Label>
-            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <Input
+              type="date"
+              min={new Date().toISOString().slice(0, 10)}
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
           </div>
 
           <div>

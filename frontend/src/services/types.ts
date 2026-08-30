@@ -118,6 +118,12 @@ export interface AddAgendaItemInput {
   allottedMinutes?: number
 }
 
+export interface UpdateAgendaItemInput {
+  topic?: string
+  ownerId?: string
+  allottedMinutes?: number
+}
+
 export interface AddMinutesItemInput {
   topic: string
   notes: string
@@ -168,6 +174,7 @@ export interface MeetingsService {
   resendParticipantInvite(meetingId: string, participantId: string): Promise<void>
   listAgendaItems(meetingId: string): Promise<AgendaItem[]>
   addAgendaItem(meetingId: string, input: AddAgendaItemInput): Promise<AgendaItem>
+  updateAgendaItem(meetingId: string, agendaItemId: string, input: UpdateAgendaItemInput): Promise<AgendaItem>
   getMinutes(meetingId: string): Promise<Minutes | null>
   listMinutesItems(meetingId: string): Promise<MinutesItem[]>
   addMinutesItem(meetingId: string, input: AddMinutesItemInput): Promise<MinutesItem>

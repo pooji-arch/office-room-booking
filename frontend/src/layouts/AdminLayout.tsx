@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   BarChart3,
   CalendarDays,
@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/useAuth"
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed"
 import { useSidebarWidth } from "@/hooks/useSidebarWidth"
+import { useScrollRestoration } from "@/hooks/useScrollRestoration"
 
 export function AdminLayout() {
   const { user, logout } = useAuth()
@@ -35,6 +36,8 @@ export function AdminLayout() {
   const [collapsed, setCollapsed] = useSidebarCollapsed()
   const [sidebarWidth, setSidebarWidth] = useSidebarWidth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const mainRef = useRef<HTMLElement>(null)
+  useScrollRestoration(mainRef)
 
   const NAV_SECTIONS: SidebarNavSection[] = [
     {
@@ -111,7 +114,7 @@ export function AdminLayout() {
           </Button>
           <Logo />
         </div>
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-7xl px-6 py-6 md:px-8 md:py-8">
             <Outlet />
           </div>

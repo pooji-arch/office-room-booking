@@ -56,7 +56,7 @@ export function MeetingDetailsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon-sm" onClick={() => navigate("/admin/meetings")}>
+          <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)}>
             <ArrowLeft className="size-4" />
           </Button>
           <h1 className="text-2xl font-semibold tracking-tight">Meeting Details</h1>
@@ -115,6 +115,7 @@ export function MeetingDetailsPage() {
                     meetingId={meeting.id}
                     isOrganizerOrAdmin={isOrganizerOrAdmin}
                     previousMeetingId={meeting.previousMeetingId}
+                    organizer={meeting.bookedBy}
                   />
                   <MeetingParticipantsCard
                     meetingId={meeting.id}
