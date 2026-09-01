@@ -178,7 +178,20 @@ export function RoomDetailsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{room.name}</h1>
           <StatusBadge status={room.status} />
         </div>
-        <Button variant="outline" onClick={() => navigate(`/rooms/${id}/calendar`)}>
+        {/* replace, not a normal push: Calendar View's own back arrow
+            replaces back to this exact URL (see RoomCalendarViewPage) — if
+            entering pushed a new entry instead, toggling into Calendar and
+            back would leave two adjacent history entries both pointing at
+            this same room, and the very next "back" click would silently
+            land on the first one (visually identical, looks like nothing
+            happened) before a second click was needed to actually reach
+            Home. Matching replace on both sides keeps this room's history
+            footprint to exactly one entry no matter how many times you
+            toggle between its Details and Calendar views. */}
+        <Button
+          variant="outline"
+          onClick={() => navigate(`/rooms/${id}/calendar`, { replace: true })}
+        >
           <CalendarDays className="size-4" />
           Calendar View
         </Button>
