@@ -66,7 +66,7 @@ export function MeetingReschedulePage() {
         input: { date: dateStr, startTime: selectedSlot.start, endTime: selectedSlot.end },
       })
       toast.success("Meeting rescheduled")
-      navigate(`/meetings/${meeting.id}`)
+      navigate(`/meetings/${meeting.id}`, { replace: true })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reschedule meeting")
     }
@@ -75,7 +75,16 @@ export function MeetingReschedulePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon-sm" onClick={() => navigate(`/meetings/${meeting.id}`)}>
+        {/* replace, not a plain push: the "Reschedule" button on Meeting
+            Details also replaces into this page (see
+            UserMeetingDetailsPage) — matching on both sides keeps this
+            meeting's history footprint to exactly one entry, same fix and
+            same reasoning as Room Details <-> Calendar View. */}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => navigate(`/meetings/${meeting.id}`, { replace: true })}
+        >
           <ArrowLeft className="size-4" />
         </Button>
         <h1 className="text-2xl font-semibold tracking-tight">Reschedule Meeting</h1>
@@ -138,7 +147,11 @@ export function MeetingReschedulePage() {
             </Popover>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => navigate(`/meetings/${meeting.id}`)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate(`/meetings/${meeting.id}`, { replace: true })}
+              >
                 Cancel
               </Button>
               <Button

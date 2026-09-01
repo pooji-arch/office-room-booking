@@ -79,7 +79,11 @@ export function MeetingDetailsPage() {
             >
               Cancel Meeting
             </Button>
-            <Button variant="outline" onClick={() => navigate(`/admin/meetings/${meeting.id}/edit`)}>
+            {/* replace, not a plain push — see MeetingEditPage for why */}
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/admin/meetings/${meeting.id}/edit`, { replace: true })}
+            >
               <Pencil className="size-4" />
               Edit & Reassign
             </Button>

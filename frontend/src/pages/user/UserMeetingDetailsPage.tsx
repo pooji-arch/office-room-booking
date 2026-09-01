@@ -103,7 +103,11 @@ export function UserMeetingDetailsPage() {
             >
               Cancel Meeting
             </Button>
-            <Button variant="outline" onClick={() => navigate(`/meetings/${meeting.id}/reschedule`)}>
+            {/* replace, not a plain push — see MeetingReschedulePage for why */}
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/meetings/${meeting.id}/reschedule`, { replace: true })}
+            >
               Reschedule
             </Button>
           </div>
