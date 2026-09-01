@@ -1,5 +1,4 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { CalendarRange, Eye, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -39,14 +38,36 @@ function typeDeptLabel(type: string, department?: string) {
 
 export function MeetingsManagementPage() {
   const navigate = useNavigate()
-  const [search, setSearch] = useState("")
-  const [roomId, setRoomId] = useState<string>("all")
-  const [dateFrom, setDateFrom] = useState("")
-  const [dateTo, setDateTo] = useState("")
-  const [bucket, setBucket] = useState<MeetingBucket>("all")
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  // Backed by the URL, not useState: this list is always reached by
+  // navigating into a meeting and back, which remounts the page and would
+  // otherwise silently reset every filter and the page/page-size you'd
+  // picked back to their defaults — confirmed live as a real, reported
+  // annoyance on the user-side equivalent of this same page (picking 25
+  // rows per page, opening a meeting, coming back to find it quietly
+  // reverted to 10). The URL survives that remount for free.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const search = searchParams.get("search") ?? ""
+  const roomId = searchParams.get("roomId") ?? "all"
+  const dateFrom = searchParams.get("dateFrom") ?? ""
+  const dateTo = searchParams.get("dateTo") ?? ""
+  const bucket = (searchParams.get("bucket") as MeetingBucket | null) ?? "all"
+  const page = Number(searchParams.get("page") ?? "1")
+  const pageSize = Number(searchParams.get("pageSize") ?? "10")
   const debouncedSearch = useDebouncedValue(search)
+
+  function updateParams(updates: Record<string, string>) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        for (const [key, value] of Object.entries(updates)) {
+          if (value) next.set(key, value)
+          else next.delete(key)
+        }
+        return next
+      },
+      { replace: true }
+    )
+  }
 
   const { data: rooms } = useRooms({ pageSize: 100 })
   const { data, isLoading } = useMeetings({
@@ -60,20 +81,14 @@ export function MeetingsManagementPage() {
   })
 
   function handlePageSizeChange(size: number) {
-    setPageSize(size)
-    setPage(1)
+    updateParams({ pageSize: String(size), page: "1" })
   }
 
   const hasActiveFilters =
     search !== "" || roomId !== "all" || dateFrom !== "" || dateTo !== "" || bucket !== "all"
 
   function clearFilters() {
-    setSearch("")
-    setRoomId("all")
-    setDateFrom("")
-    setDateTo("")
-    setBucket("all")
-    setPage(1)
+    setSearchParams({}, { replace: true })
   }
 
   return (
@@ -83,19 +98,13 @@ export function MeetingsManagementPage() {
       <div className="flex flex-wrap items-center gap-3">
         <SearchInput
           value={search}
-          onChange={(v) => {
-            setSearch(v)
-            setPage(1)
-          }}
+          onChange={(v) => updateParams({ search: v, page: "1" })}
           placeholder="Search meetings..."
           className="w-full max-w-xs"
         />
         <Select
           value={roomId}
-          onValueChange={(v) => {
-            setRoomId(v)
-            setPage(1)
-          }}
+          onValueChange={(v) => updateParams({ roomId: v, page: "1" })}
         >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="All Rooms" />
@@ -113,29 +122,20 @@ export function MeetingsManagementPage() {
           <Input
             type="date"
             value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value)
-              setPage(1)
-            }}
+            onChange={(e) => updateParams({ dateFrom: e.target.value, page: "1" })}
             className="w-[150px]"
           />
           <span>to</span>
           <Input
             type="date"
             value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value)
-              setPage(1)
-            }}
+            onChange={(e) => updateParams({ dateTo: e.target.value, page: "1" })}
             className="w-[150px]"
           />
         </div>
         <MeetingBucketFilter
           value={bucket}
-          onChange={(v) => {
-            setBucket(v)
-            setPage(1)
-          }}
+          onChange={(v) => updateParams({ bucket: v, page: "1" })}
         />
         {hasActiveFilters && (
           <Button type="button" variant="ghost" onClick={clearFilters}>
@@ -222,7 +222,7 @@ export function MeetingsManagementPage() {
           <div className="p-4">
             <Pagination
               pagination={data.pagination}
-              onPageChange={setPage}
+              onPageChange={(p) => updateParams({ page: String(p) })}
               onPageSizeChange={handlePageSizeChange}
             />
           </div>
