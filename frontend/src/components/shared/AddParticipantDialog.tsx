@@ -1,8 +1,17 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Select,
   SelectContent,
@@ -19,6 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { useActiveUsers } from "@/hooks/useUsers"
 import { useAddParticipant } from "@/hooks/useMeetings"
+import { cn } from "@/lib/utils"
 import type { MeetingParticipant, ParticipantRole } from "@/types"
 
 export function AddParticipantDialog({
@@ -36,9 +46,11 @@ export function AddParticipantDialog({
   const addParticipant = useAddParticipant()
   const [profileId, setProfileId] = useState("")
   const [role, setRole] = useState<ParticipantRole>("PARTICIPANT")
+  const [personPickerOpen, setPersonPickerOpen] = useState(false)
 
   const excluded = new Set(existingParticipantIds)
   const candidates = (users?.data ?? []).filter((u) => !excluded.has(u.id))
+  const selected = candidates.find((u) => u.id === profileId)
 
   async function handleAdd() {
     if (!profileId) {
@@ -66,24 +78,60 @@ export function AddParticipantDialog({
         <div className="space-y-4">
           <div>
             <Label className="mb-1.5">Person</Label>
-            <Select value={profileId} onValueChange={setProfileId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a person to add" />
-              </SelectTrigger>
-              <SelectContent>
-                {candidates.length === 0 ? (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                    Everyone active is already on this meeting.
-                  </div>
-                ) : (
-                  candidates.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name} — {u.email}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            {/* A searchable combobox, not a plain dropdown — scrolling
+                through every active user to find one specific name doesn't
+                scale once the org has more than a handful of people. */}
+            <Popover open={personPickerOpen} onOpenChange={setPersonPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={personPickerOpen}
+                  className="w-full justify-between font-normal"
+                  disabled={candidates.length === 0}
+                >
+                  <span className="truncate">
+                    {selected
+                      ? `${selected.name} — ${selected.email}`
+                      : candidates.length === 0
+                        ? "Everyone active is already on this meeting"
+                        : "Select a person to add"}
+                  </span>
+                  <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search by name or email..." />
+                  <CommandList>
+                    <CommandEmpty>No one matches that search.</CommandEmpty>
+                    <CommandGroup>
+                      {candidates.map((u) => (
+                        <CommandItem
+                          key={u.id}
+                          value={`${u.name} ${u.email}`}
+                          onSelect={() => {
+                            setProfileId(u.id)
+                            setPersonPickerOpen(false)
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "size-4",
+                              profileId === u.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <span className="truncate">
+                            {u.name} — {u.email}
+                          </span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div>
