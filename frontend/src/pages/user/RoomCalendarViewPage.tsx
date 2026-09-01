@@ -58,7 +58,19 @@ export function RoomCalendarViewPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)}>
+        {/* Deliberately not navigate(-1): this page has exactly one real
+            origin (its own room's Details page, via the "Calendar View"
+            button there), so replacing straight to it collapses this
+            history entry rather than just popping it. Reported live as
+            still toggling back and forth with navigate(-1) on some
+            browsers even though it verified correctly here — replace
+            removes the ambiguity entirely instead of depending on the
+            browser's exact "-1" semantics matching what was tested. */}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => navigate(`/rooms/${id}`, { replace: true })}
+        >
           <ArrowLeft className="size-4" />
         </Button>
         <h1 className="text-2xl font-semibold tracking-tight">{room.name} · Calendar</h1>
