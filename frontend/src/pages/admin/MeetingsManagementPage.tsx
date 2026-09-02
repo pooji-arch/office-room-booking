@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { CalendarRange, Eye, X } from "lucide-react"
+import { CalendarRange, Eye, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
+import { DatePicker } from "@/components/shared/DatePicker"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Pagination } from "@/components/shared/Pagination"
@@ -27,7 +27,7 @@ import { TableSkeleton } from "@/components/shared/TableSkeleton"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useMeetings } from "@/hooks/useMeetings"
 import { useRooms } from "@/hooks/useRooms"
-import { meetingDisplayStatus } from "@/lib/meeting-buckets"
+import { followUpLabel, meetingDisplayStatus } from "@/lib/meeting-buckets"
 import { formatDateMedium, formatTimeRange, initials } from "@/lib/format"
 import type { MeetingBucket } from "@/types"
 
@@ -93,7 +93,13 @@ export function MeetingsManagementPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Meetings</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-extrabold tracking-tight">Meetings</h1>
+        <Button onClick={() => navigate("/admin/meetings/new")}>
+          <Plus className="size-4" />
+          New Meeting
+        </Button>
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <SearchInput
@@ -119,17 +125,17 @@ export function MeetingsManagementPage() {
           </SelectContent>
         </Select>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Input
-            type="date"
+          <DatePicker
             value={dateFrom}
-            onChange={(e) => updateParams({ dateFrom: e.target.value, page: "1" })}
+            onChange={(v) => updateParams({ dateFrom: v, page: "1" })}
+            placeholder="From"
             className="w-[150px]"
           />
           <span>to</span>
-          <Input
-            type="date"
+          <DatePicker
             value={dateTo}
-            onChange={(e) => updateParams({ dateTo: e.target.value, page: "1" })}
+            onChange={(v) => updateParams({ dateTo: v, page: "1" })}
+            placeholder="To"
             className="w-[150px]"
           />
         </div>
@@ -180,7 +186,19 @@ export function MeetingsManagementPage() {
                   onClick={() => navigate(`/admin/meetings/${meeting.id}`)}
                 >
                   <TableCell className="whitespace-normal">
-                    <p className="truncate font-medium">{meeting.title ?? meeting.purpose}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-medium">{meeting.title ?? meeting.purpose}</p>
+                      {followUpLabel(meeting.followUpNumber) && (
+                        <StatusBadge
+                          status="FOLLOWUP"
+                          tone="neutral"
+                          label={followUpLabel(meeting.followUpNumber)!}
+                        />
+                      )}
+                      {meeting.organizerTransferredAt && (
+                        <StatusBadge status="TRANSFERRED" tone="info" label="Transferred" />
+                      )}
+                    </div>
                     <p className="truncate text-xs text-muted-foreground">
                       {typeDeptLabel(meeting.type, meeting.department)}
                     </p>

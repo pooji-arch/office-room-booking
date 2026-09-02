@@ -24,7 +24,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge"
 import { ActionItemDialog } from "@/components/shared/ActionItemDialog"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { useActionItems, useDeleteActionItem, useMeeting, useUpdateActionItemStatus } from "@/hooks/useMeetings"
-import { formatDateShort, initials, toDateInputValue } from "@/lib/format"
+import { formatDateMedium, formatDateShort, initials, toDateInputValue } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { ActionItem, ActionItemStatus } from "@/types"
 
@@ -50,9 +50,9 @@ export function ActionItemsCard({
 
   const today = toDateInputValue(new Date())
 
-  async function handleStatusChange(item: ActionItem, status: ActionItemStatus) {
+  async function handleStatusChange(item: ActionItem, status: ActionItemStatus, targetMeetingId: string) {
     try {
-      await updateStatus.mutateAsync({ meetingId, actionItemId: item.id, status })
+      await updateStatus.mutateAsync({ meetingId: targetMeetingId, actionItemId: item.id, status })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update status")
     }
@@ -74,11 +74,12 @@ export function ActionItemsCard({
       {!!previousActionItems?.length && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2">
               <CheckSquare className="size-4 text-muted-foreground" />
-              Before
+              Action Items History
               <span className="font-normal text-muted-foreground">
                 — from &quot;{previousMeeting?.title ?? previousMeeting?.purpose}&quot;
+                {previousMeeting?.date && ` · ${formatDateMedium(previousMeeting.date)}`}
               </span>
             </CardTitle>
           </CardHeader>
@@ -94,19 +95,52 @@ export function ActionItemsCard({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {previousActionItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.title}</TableCell>
-                    <TableCell>{item.ownerName ?? "Unassigned"}</TableCell>
-                    <TableCell>{item.dueDate ? formatDateShort(item.dueDate) : "—"}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={item.priority} />
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={item.status} />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {previousActionItems.map((item) => {
+                  const isOwner = item.ownerId === currentUserId
+                  const canChangeStatus = isOrganizerOrAdmin || isOwner
+                  const needsSignOff =
+                    !isOrganizerOrAdmin && isOwner && item.priority === "HIGH" && item.status !== "DONE"
+
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.title}</TableCell>
+                      <TableCell>{item.ownerName ?? "Unassigned"}</TableCell>
+                      <TableCell>{item.dueDate ? formatDateShort(item.dueDate) : "—"}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={item.priority} />
+                      </TableCell>
+                      <TableCell>
+                        {canChangeStatus ? (
+                          <>
+                            <Select
+                              value={item.status}
+                              onValueChange={(v) =>
+                                handleStatusChange(item, v as ActionItemStatus, previousMeetingId!)
+                              }
+                            >
+                              <SelectTrigger size="sm" className="w-[130px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="OPEN">Open</SelectItem>
+                                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                                <SelectItem value="DELAYED">Delayed</SelectItem>
+                                <SelectItem value="DONE" disabled={needsSignOff}>
+                                  Done
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {needsSignOff && (
+                              <p className="mt-1 text-[11px] text-muted-foreground">Needs organizer sign-off</p>
+                            )}
+                          </>
+                        ) : (
+                          <StatusBadge status={item.status} />
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </CardContent>
@@ -115,7 +149,7 @@ export function ActionItemsCard({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2">
               <CheckSquare className="size-4 text-muted-foreground" />
               Action Items
             </CardTitle>
@@ -184,7 +218,10 @@ export function ActionItemsCard({
                       <TableCell>
                         {canChangeStatus ? (
                           <>
-                            <Select value={item.status} onValueChange={(v) => handleStatusChange(item, v as ActionItemStatus)}>
+                            <Select
+                              value={item.status}
+                              onValueChange={(v) => handleStatusChange(item, v as ActionItemStatus, meetingId)}
+                            >
                               <SelectTrigger size="sm" className="w-[130px]">
                                 <SelectValue />
                               </SelectTrigger>

@@ -5,7 +5,6 @@ import { useActiveUsers } from "@/hooks/useUsers"
 import { useRoomAvailability, useRooms } from "@/hooks/useRooms"
 import { meetingDisplayStatus } from "@/lib/meeting-buckets"
 import { toDateInputValue } from "@/lib/format"
-import type { MeetingType } from "@/types"
 
 type TimeRange = { start: string; end: string }
 
@@ -24,20 +23,29 @@ export function useAdminMeetingEditor(meetingId: string | undefined) {
   const [bookedById, setBookedById] = useState("")
   const [purpose, setPurpose] = useState("")
   const [department, setDepartment] = useState("")
-  const [type, setType] = useState<MeetingType>("INTERNAL")
   const [reason, setReason] = useState("")
   const [roomId, _setRoomId] = useState<string | null>(null)
   const [selectedDate, _setSelectedDate] = useState<Date | null>(null)
   const [selectedRange, setSelectedRange] = useState<TimeRange | null>(null)
+  const [initializedForId, setInitializedForId] = useState<string | undefined>(undefined)
 
+  // Keyed to meeting.id, not to `meeting` itself: onSubmit fires reassign
+  // and update as two sequential mutations, and reassign's own cache
+  // invalidation refetches this same query (with pre-edit purpose/
+  // department/type) before the update mutation has landed its changes.
+  // Re-running this on every `meeting` change would snap the controlled
+  // inputs back to that stale mid-save data. Initializing once per meeting
+  // id means a genuine navigation to a different meeting still resets the
+  // form, but a background refetch of the meeting you're already editing
+  // never stomps on it.
   useEffect(() => {
-    if (meeting) {
+    if (meeting && meeting.id !== initializedForId) {
       setBookedById(meeting.bookedBy.id)
       setPurpose(meeting.purpose)
       setDepartment(meeting.department ?? "")
-      setType(meeting.type)
+      setInitializedForId(meeting.id)
     }
-  }, [meeting])
+  }, [meeting, initializedForId])
 
   function setRoomId(v: string) {
     _setRoomId(v)
@@ -74,15 +82,23 @@ export function useAdminMeetingEditor(meetingId: string | undefined) {
       toast.error("Purpose is required")
       return false
     }
+    if (!department.trim()) {
+      toast.error("Department is required")
+      return false
+    }
     try {
-      const scheduleChanged =
+      // Kept as two separate flags, not one combined "scheduleChanged" —
+      // reassign_at (organizer override) and rescheduled_at (time/room
+      // change) are independent facts, and reassignMeeting only stamps
+      // each one when its own flag says it actually happened.
+      const timeChanged =
         effectiveRoomId !== meeting.roomId ||
         effectiveDateStr !== meeting.date ||
         effectiveRange.start !== meeting.startTime ||
-        effectiveRange.end !== meeting.endTime ||
-        bookedById !== meeting.bookedBy.id
+        effectiveRange.end !== meeting.endTime
+      const organizerChanged = bookedById !== meeting.bookedBy.id
 
-      if (scheduleChanged) {
+      if (timeChanged || organizerChanged) {
         await reassign.mutateAsync({
           id: meeting.id,
           input: {
@@ -92,13 +108,15 @@ export function useAdminMeetingEditor(meetingId: string | undefined) {
             endTime: effectiveRange.end,
             bookedById,
             reason: reason || "Updated by admin",
+            timeChanged,
+            organizerChanged,
           },
         })
       }
-      if (purpose !== meeting.purpose || department !== (meeting.department ?? "") || type !== meeting.type) {
+      if (purpose !== meeting.purpose || department !== (meeting.department ?? "")) {
         await updateMeeting.mutateAsync({
           id: meeting.id,
-          input: { purpose, department, type },
+          input: { purpose, department },
         })
       }
       toast.success("Meeting updated")
@@ -135,7 +153,7 @@ export function useAdminMeetingEditor(meetingId: string | undefined) {
     isLoadingSlots,
     isSaving,
     onSubmit,
-    form: { bookedById, setBookedById, purpose, setPurpose, department, setDepartment, type, setType, reason, setReason },
+    form: { bookedById, setBookedById, purpose, setPurpose, department, setDepartment, reason, setReason },
     schedule: {
       effectiveRoomId,
       effectiveDateStr,

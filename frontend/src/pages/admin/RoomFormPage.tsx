@@ -139,7 +139,7 @@ export function RoomFormPage() {
         <Button variant="ghost" size="icon-sm" onClick={() => navigate("/admin/rooms")}>
           <ArrowLeft className="size-4" />
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="text-2xl font-extrabold tracking-tight">
           {isEdit ? "Edit Room" : "Add New Room"}
         </h1>
       </div>
@@ -148,7 +148,7 @@ export function RoomFormPage() {
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Room details</CardTitle>
+              <CardTitle>Room details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

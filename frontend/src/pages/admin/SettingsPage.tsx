@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/shared/EmptyState"
 export function SettingsPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight">Settings</h1>
       <EmptyState
         icon={Settings}
         title="Settings are coming soon"

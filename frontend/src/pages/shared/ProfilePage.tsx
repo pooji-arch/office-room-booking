@@ -59,7 +59,7 @@ export function ProfilePage() {
 
   return (
     <div className="max-w-xl space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight">Profile</h1>
 
       <Card>
         <CardContent className="flex items-center gap-4 pt-6">
@@ -80,7 +80,7 @@ export function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2">
             <UserIcon className="size-4" /> Account Information
           </CardTitle>
         </CardHeader>
@@ -104,7 +104,7 @@ export function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2">
             <KeyRound className="size-4" /> Reset Password
           </CardTitle>
         </CardHeader>

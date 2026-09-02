@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import {
   AlarmClock,
   AlertTriangle,
+  ArrowLeftRight,
   Bell,
   CalendarClock,
   CheckSquare,
@@ -40,6 +41,7 @@ const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   ACTION_ITEM_DUE_SOON: Clock,
   ACTION_ITEM_OVERDUE_DIGEST: AlertTriangle,
   MOM_PENDING_NUDGE: FileClock,
+  MEETING_ORGANIZER_CHANGED: ArrowLeftRight,
 }
 
 function NotificationCard({
@@ -92,7 +94,7 @@ export function NotificationsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">Notifications</h1>
         <Button
           variant="outline"
           size="sm"

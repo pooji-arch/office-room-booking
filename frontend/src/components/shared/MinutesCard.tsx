@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EditMinutesItemDialog } from "@/components/shared/EditMinutesItemDialog"
 import { CardContentSkeleton } from "@/components/shared/PageSkeletons"
 import { useAddMinutesItem, useFinalizeMinutes, useMeeting, useMinutes, useMinutesItems } from "@/hooks/useMeetings"
+import { formatDateMedium } from "@/lib/format"
 import type { MinutesItem } from "@/types"
 
 export function MinutesCard({
@@ -82,11 +83,12 @@ export function MinutesCard({
       {!!previousItems?.length && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2">
               <ClipboardList className="size-4 text-muted-foreground" />
               Minutes History
               <span className="font-normal text-muted-foreground">
                 — from &quot;{previousMeeting?.title ?? previousMeeting?.purpose}&quot;
+                {previousMeeting?.date && ` · ${formatDateMedium(previousMeeting.date)}`}
               </span>
             </CardTitle>
           </CardHeader>
@@ -109,7 +111,7 @@ export function MinutesCard({
       <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2">
             <ClipboardList className="size-4 text-muted-foreground" />
             Minutes of Meeting
           </CardTitle>

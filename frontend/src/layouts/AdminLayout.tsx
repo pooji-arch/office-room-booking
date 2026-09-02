@@ -23,10 +23,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { initials } from "@/lib/format"
-import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/useAuth"
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed"
-import { useSidebarWidth } from "@/hooks/useSidebarWidth"
 import { useScrollRestoration } from "@/hooks/useScrollRestoration"
 
 export function AdminLayout() {
@@ -34,7 +32,6 @@ export function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [collapsed, setCollapsed] = useSidebarCollapsed()
-  const [sidebarWidth, setSidebarWidth] = useSidebarWidth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
   useScrollRestoration(mainRef)
@@ -70,23 +67,16 @@ export function AdminLayout() {
         onToggleCollapsed={() => setCollapsed((c) => !c)}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
-        width={sidebarWidth}
-        onWidthChange={setSidebarWidth}
-        footer={(footerCollapsed) => (
+        footer={() => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-sidebar-accent",
-                  footerCollapsed && "lg:justify-center"
-                )}
-              >
+              <button className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-sidebar-accent">
                 <Avatar className="size-9 shrink-0">
                   <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">
                     {user ? initials(user.name) : "A"}
                   </AvatarFallback>
                 </Avatar>
-                <div className={cn("min-w-0", footerCollapsed && "lg:hidden")}>
+                <div className="sidebar-label min-w-0">
                   <p className="truncate text-sm font-medium">{user?.name ?? "Admin"}</p>
                   <p className="truncate text-xs text-sidebar-foreground/60">
                     {user?.role === "ADMIN" ? "Administrator" : "Admin"}

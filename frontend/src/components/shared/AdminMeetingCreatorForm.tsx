@@ -2,7 +2,6 @@ import { useState } from "react"
 import { CalendarDays, ChevronRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -15,38 +14,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { TimeRangeInput } from "@/components/shared/TimeRangeInput"
-import type { useAdminMeetingEditor } from "@/hooks/useAdminMeetingEditor"
-import { formatDateMedium, formatTimeRange, parseDateInputValue, toDateInputValue } from "@/lib/format"
+import type { useAdminMeetingCreator } from "@/hooks/useAdminMeetingCreator"
+import { formatDateMedium, formatTimeRange, toDateInputValue } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-// The "Edit & Reassign" form — its own dedicated page (MeetingEditPage),
-// driven by useAdminMeetingEditor.
-export function AdminMeetingEditorForm({
-  editor,
-  onSaved,
+// The "Book a Meeting" form — admin's own dedicated page (MeetingCreatePage),
+// driven by useAdminMeetingCreator. Same field shape as
+// AdminMeetingEditorForm's Edit & Reassign form, minus the Reason field
+// (nothing to reassign yet) and with no "meeting" to fall back to for
+// display, since this creates a brand-new one.
+export function AdminMeetingCreatorForm({
+  creator,
+  onCreated,
 }: {
-  editor: ReturnType<typeof useAdminMeetingEditor>
-  onSaved?: () => void
+  creator: ReturnType<typeof useAdminMeetingCreator>
+  onCreated?: (meetingId: string) => void
 }) {
-  const { meeting, users, rooms, availability, isLoadingSlots, isSaving, onSubmit, form, schedule } = editor
+  const { users, rooms, availability, isLoadingSlots, isSaving, onSubmit, form, schedule } = creator
   const [dateTimeOpen, setDateTimeOpen] = useState(false)
-  if (!meeting) return null
 
-  async function handleSave() {
-    if (await onSubmit()) onSaved?.()
+  async function handleBook() {
+    const meetingId = await onSubmit()
+    if (meetingId) onCreated?.(meetingId)
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Edit & Reassign Meeting</CardTitle>
+        <CardTitle>Book a Meeting</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <Label className="mb-1.5">Assign To *</Label>
+          <Label className="mb-1.5">Organizer *</Label>
           <Select value={form.bookedById} onValueChange={form.setBookedById}>
             <SelectTrigger className="w-full">
-              <SelectValue />
+              <SelectValue placeholder="Select an organizer" />
             </SelectTrigger>
             <SelectContent>
               {users?.data.map((u) => (
@@ -60,9 +62,9 @@ export function AdminMeetingEditorForm({
 
         <div>
           <Label className="mb-1.5">Room *</Label>
-          <Select value={schedule.effectiveRoomId} onValueChange={schedule.setRoomId}>
+          <Select value={form.roomId} onValueChange={form.setRoomId}>
             <SelectTrigger className="w-full">
-              <SelectValue />
+              <SelectValue placeholder="Select a room" />
             </SelectTrigger>
             <SelectContent>
               {rooms?.data.map((r) => (
@@ -86,13 +88,16 @@ export function AdminMeetingEditorForm({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="mt-1.5 flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50"
+                disabled={!form.roomId}
+                className="mt-1.5 flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
                 <span className="flex-1 truncate">
-                  {schedule.effectiveRange
-                    ? `${formatDateMedium(schedule.effectiveDateStr)} · ${formatTimeRange(schedule.effectiveRange.start, schedule.effectiveRange.end)}`
-                    : `${formatDateMedium(schedule.effectiveDateStr)} · Pick a time`}
+                  {!form.roomId
+                    ? "Select a room first"
+                    : schedule.selectedRange
+                      ? `${formatDateMedium(schedule.dateStr)} · ${formatTimeRange(schedule.selectedRange.start, schedule.selectedRange.end)}`
+                      : `${formatDateMedium(schedule.dateStr)} · Pick a time`}
                 </span>
                 <ChevronRight
                   className={cn(
@@ -108,7 +113,7 @@ export function AdminMeetingEditorForm({
             >
               <Calendar
                 mode="single"
-                selected={schedule.selectedDate ?? parseDateInputValue(meeting.date)}
+                selected={schedule.selectedDate}
                 onSelect={(d) => d && schedule.setSelectedDate(d)}
                 disabled={(d) => toDateInputValue(d) < toDateInputValue(new Date())}
               />
@@ -117,11 +122,9 @@ export function AdminMeetingEditorForm({
                   <Loader2 className="size-5 animate-spin text-primary" />
                 ) : (
                   <TimeRangeInput
-                    key={`${schedule.effectiveRoomId}-${schedule.effectiveDateStr}`}
-                    date={schedule.effectiveDateStr}
+                    key={`${form.roomId}-${schedule.dateStr}`}
+                    date={schedule.dateStr}
                     bookedRanges={availability?.bookedRanges ?? []}
-                    defaultStart={meeting.startTime}
-                    defaultEnd={meeting.endTime}
                     onChange={schedule.setSelectedRange}
                   />
                 )}
@@ -144,37 +147,15 @@ export function AdminMeetingEditorForm({
           </div>
         </div>
 
-        <div>
-          <Label className="mb-1.5">Reason</Label>
-          <Textarea
-            placeholder="Enter reason for reassignment"
-            rows={2}
-            value={form.reason}
-            onChange={(e) => form.setReason(e.target.value)}
-          />
-          <p className="mt-1 text-xs text-muted-foreground">Optional — only used if reassigning</p>
-        </div>
-
         <Button
           type="button"
           className="w-full"
-          disabled={
-            isSaving ||
-            meeting.status === "CANCELLED" ||
-            !schedule.effectiveRange ||
-            !form.purpose.trim() ||
-            !form.department.trim()
-          }
-          onClick={handleSave}
+          disabled={isSaving || !form.roomId || !schedule.selectedRange || !form.purpose.trim() || !form.department.trim()}
+          onClick={handleBook}
         >
           {isSaving && <Loader2 className="size-4 animate-spin" />}
-          Save Changes
+          Book Meeting
         </Button>
-        {meeting.status === "CANCELLED" && (
-          <p className="text-center text-xs text-muted-foreground">
-            This meeting is cancelled and can no longer be edited.
-          </p>
-        )}
       </CardContent>
     </Card>
   )

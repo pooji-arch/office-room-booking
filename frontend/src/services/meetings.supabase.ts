@@ -45,6 +45,7 @@ interface MeetingRow {
   department: string | null
   review_date: string | null
   previous_meeting_id: string | null
+  follow_up_number: number
   attendees: number | null
   status: Meeting["status"]
   cancelled_at: string | null
@@ -53,6 +54,8 @@ interface MeetingRow {
   reassigned_by_name: string | null
   reassignment_reason: string | null
   rescheduled_at: string | null
+  organizer_transferred_at: string | null
+  previous_organizer_name: string | null
   created_at: string
 }
 
@@ -78,6 +81,7 @@ function mapMeeting(row: MeetingRow): Meeting {
     department: row.department ?? undefined,
     reviewDate: row.review_date ?? undefined,
     previousMeetingId: row.previous_meeting_id ?? undefined,
+    followUpNumber: row.follow_up_number,
     attendees: row.attendees ?? undefined,
     status: row.status,
     cancelledAt: row.cancelled_at ?? undefined,
@@ -86,6 +90,8 @@ function mapMeeting(row: MeetingRow): Meeting {
     reassignedByName: row.reassigned_by_name ?? undefined,
     reassignmentReason: row.reassignment_reason ?? undefined,
     rescheduledAt: row.rescheduled_at ?? undefined,
+    organizerTransferredAt: row.organizer_transferred_at ?? undefined,
+    previousOrganizerName: row.previous_organizer_name ?? undefined,
     createdAt: row.created_at,
   }
 }
@@ -482,15 +488,17 @@ export const supabaseMeetingsService: MeetingsService = {
   },
 
   async reassignMeeting(id, input: ReassignMeetingInput) {
-    const { data: currentUser } = await supabase.auth.getUser()
     let reassignedByName: string | undefined
-    if (currentUser.user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("name")
-        .eq("id", currentUser.user.id)
-        .single()
-      reassignedByName = profile?.name
+    if (input.organizerChanged) {
+      const { data: currentUser } = await supabase.auth.getUser()
+      if (currentUser.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("id", currentUser.user.id)
+          .single()
+        reassignedByName = profile?.name
+      }
     }
 
     const { data, error } = await supabase
@@ -501,11 +509,38 @@ export const supabaseMeetingsService: MeetingsService = {
         ...(input.startTime !== undefined && { start_time: input.startTime }),
         ...(input.endTime !== undefined && { end_time: input.endTime }),
         ...(input.bookedById !== undefined && { booked_by_id: input.bookedById }),
-        reassigned_at: new Date().toISOString(),
-        reassigned_by_name: reassignedByName,
-        reassignment_reason: input.reason,
-        rescheduled_at: new Date().toISOString(),
+        // Stamped independently — reassigning the organizer without touching
+        // the schedule shouldn't show a "Rescheduled" banner, and changing
+        // just the room/time without the organizer shouldn't show
+        // "Reassigned by <admin>". Both can fire together when both actually
+        // changed.
+        ...(input.organizerChanged && {
+          reassigned_at: new Date().toISOString(),
+          reassigned_by_name: reassignedByName,
+          reassignment_reason: input.reason,
+        }),
+        ...(input.timeChanged && { rescheduled_at: new Date().toISOString() }),
       })
+      .eq("id", id)
+      .select("*")
+      .single()
+    if (error) throw friendlyError(error)
+    return mapMeeting(data as MeetingRow)
+  },
+
+  async transferOrganizer(id, newOrganizerId: string) {
+    // Deliberately just booked_by_id + organizer_transferred_at — no
+    // reassigned_at/reassigned_by_name/reassignment_reason (those stay
+    // admin-reassignment-only, per migration 0023) and no rescheduled_at
+    // (nothing about the schedule changed). booked_by_name/email/phone
+    // aren't set here either; they're auto-synced from the new organizer's
+    // profile by the DB's own set_booking_snapshots trigger.
+    // organizer_transferred_at (migration 0025) is this transfer's own
+    // timestamp, driving both the "Transferred" badge and the new
+    // organizer's notification.
+    const { data, error } = await supabase
+      .from("meetings")
+      .update({ booked_by_id: newOrganizerId, organizer_transferred_at: new Date().toISOString() })
       .eq("id", id)
       .select("*")
       .single()

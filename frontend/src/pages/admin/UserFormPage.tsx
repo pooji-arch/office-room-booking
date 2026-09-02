@@ -120,7 +120,7 @@ function TemporaryPasswordCard({
 
   return (
     <div className="max-w-lg space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
       <Card>
         <CardContent className="space-y-3 pt-6">
           <p className="text-sm text-muted-foreground">{description}</p>
@@ -247,7 +247,7 @@ export function UserFormPage() {
         <Button variant="ghost" size="icon-sm" onClick={() => navigate("/admin/users")}>
           <ArrowLeft className="size-4" />
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="text-2xl font-extrabold tracking-tight">
           {isEdit ? "Edit User" : "Add User"}
         </h1>
       </div>
@@ -256,7 +256,7 @@ export function UserFormPage() {
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">User details</CardTitle>
+              <CardTitle>User details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

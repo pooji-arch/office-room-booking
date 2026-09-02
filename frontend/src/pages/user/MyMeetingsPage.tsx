@@ -13,11 +13,13 @@ import {
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Pagination } from "@/components/shared/Pagination"
 import { StatusBadge } from "@/components/shared/StatusBadge"
+import { SearchInput } from "@/components/shared/SearchInput"
 import { MeetingBucketFilter } from "@/components/shared/MeetingBucketFilter"
 import { TableSkeleton } from "@/components/shared/TableSkeleton"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useMeetings } from "@/hooks/useMeetings"
 import { useAuth } from "@/hooks/useAuth"
-import { meetingDisplayStatus } from "@/lib/meeting-buckets"
+import { followUpLabel, meetingDisplayStatus } from "@/lib/meeting-buckets"
 import { formatDateMedium, formatTimeRange, initials } from "@/lib/format"
 import type { MeetingBucket } from "@/types"
 
@@ -38,16 +40,19 @@ export function MyMeetingsPage() {
   // free, the same way RoomDetailsPage already carries its own state via
   // search params.
   const [searchParams, setSearchParams] = useSearchParams()
+  const search = searchParams.get("search") ?? ""
   const bucket = (searchParams.get("bucket") as MeetingBucket | null) ?? "all"
   const page = Number(searchParams.get("page") ?? "1")
   const pageSize = Number(searchParams.get("pageSize") ?? "10")
+  const debouncedSearch = useDebouncedValue(search)
 
   function updateParams(updates: Record<string, string>) {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
         for (const [key, value] of Object.entries(updates)) {
-          next.set(key, value)
+          if (value) next.set(key, value)
+          else next.delete(key)
         }
         return next
       },
@@ -57,6 +62,7 @@ export function MyMeetingsPage() {
 
   const { data, isLoading } = useMeetings({
     organizerOrParticipantId: user?.id,
+    search: debouncedSearch,
     bucket,
     page,
     pageSize,
@@ -68,8 +74,14 @@ export function MyMeetingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Meetings</h1>
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-extrabold tracking-tight">Meetings</h1>
+        <SearchInput
+          value={search}
+          onChange={(v) => updateParams({ search: v, page: "1" })}
+          placeholder="Search meetings..."
+          className="w-full max-w-xs"
+        />
         <MeetingBucketFilter
           value={bucket}
           onChange={(v) => updateParams({ bucket: v, page: "1" })}
@@ -118,8 +130,15 @@ export function MyMeetingsPage() {
                   <TableCell className="whitespace-normal">
                     <div className="flex items-center gap-2">
                       <p className="truncate font-medium">{meeting.title ?? meeting.purpose}</p>
-                      {meeting.previousMeetingId && (
-                        <StatusBadge status="FOLLOWUP" tone="neutral" label="Follow-up" />
+                      {followUpLabel(meeting.followUpNumber) && (
+                        <StatusBadge
+                          status="FOLLOWUP"
+                          tone="neutral"
+                          label={followUpLabel(meeting.followUpNumber)!}
+                        />
+                      )}
+                      {meeting.organizerTransferredAt && (
+                        <StatusBadge status="TRANSFERRED" tone="info" label="Transferred" />
                       )}
                     </div>
                     <p className="truncate text-xs text-muted-foreground">

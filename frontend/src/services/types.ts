@@ -99,6 +99,13 @@ export interface ReassignMeetingInput {
   endTime?: string
   bookedById?: string
   reason: string
+  // Which of the two independent things this save actually changed —
+  // reassigned_at/reassigned_by_name/reassignment_reason should only be
+  // stamped when the organizer genuinely changed, and rescheduled_at only
+  // when the room/date/time genuinely changed, so editing just one doesn't
+  // show a banner for the other. See useAdminMeetingEditor's onSubmit.
+  organizerChanged?: boolean
+  timeChanged?: boolean
 }
 
 export interface RescheduleMeetingInput {
@@ -164,6 +171,9 @@ export interface MeetingsService {
     input: { purpose?: string; department?: string; type?: MeetingType; reviewDate?: string }
   ): Promise<Meeting>
   reassignMeeting(id: string, input: ReassignMeetingInput): Promise<Meeting>
+  // Organizer-initiated, unlike reassignMeeting (admin-only): just hands
+  // the meeting to someone else, no reassigned_at/reason stamp.
+  transferOrganizer(id: string, newOrganizerId: string): Promise<Meeting>
   rescheduleMeeting(id: string, input: RescheduleMeetingInput): Promise<Meeting>
   cancelMeeting(id: string, reason?: string): Promise<Meeting>
   getMeetingHistory(meetingId: string): Promise<MeetingHistoryEntry[]>

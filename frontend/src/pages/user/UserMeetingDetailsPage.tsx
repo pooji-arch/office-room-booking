@@ -15,6 +15,7 @@ import { ReviewNextMeetingCard } from "@/components/shared/ReviewNextMeetingCard
 import { MeetingDetailTabs } from "@/components/shared/MeetingDetailTabs"
 import { MeetingHistoryList } from "@/components/shared/MeetingHistoryList"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { TransferOrganizerDialog } from "@/components/shared/TransferOrganizerDialog"
 import {
   useActionItems,
   useCancelMeeting,
@@ -34,6 +35,7 @@ export function UserMeetingDetailsPage() {
   const { data: actionItems, isLoading: isLoadingActionItems } = useActionItems(id)
   const cancelMeeting = useCancelMeeting()
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [showTransferDialog, setShowTransferDialog] = useState(false)
 
   const { data: followUps } = useMeetings(
     { previousMeetingId: meeting?.id ?? "", pageSize: 1 },
@@ -46,6 +48,7 @@ export function UserMeetingDetailsPage() {
 
   const isOrganizer = !!meeting && meeting.bookedBy.id === user?.id
   const isParticipant = !!participants?.some((p) => p.profileId === user?.id)
+  const isChair = !!participants?.some((p) => p.profileId === user?.id && p.role === "CHAIR")
   const isActionItemOwner = !!actionItems?.some((item) => item.ownerId === user?.id)
 
   if (!meeting || (!isOrganizer && !isParticipant && !isActionItemOwner)) {
@@ -62,7 +65,15 @@ export function UserMeetingDetailsPage() {
   const displayStatus = meetingDisplayStatus(meeting)
   const isCancelled = meeting.status === "CANCELLED"
   const isFinal = isCancelled || displayStatus === "COMPLETED"
+  // Cancel/Reschedule, participant management, and the Review & Next
+  // Meeting tab (booking a follow-up is its own structural, organizer-level
+  // decision) all stay organizer-only, per explicit request. A Chair only
+  // gets the same rights as the organizer for this meeting's own content —
+  // agenda, minutes, action items — matched by the RLS policies in
+  // migration 0020/0021, which are what actually enforce this; canEdit here
+  // just controls whether the UI shows controls that would work.
   const canEdit = isOrganizer && !isCancelled
+  const canEditContent = (isOrganizer || isChair) && !isCancelled
   const existingFollowUp = followUps?.data[0]
 
   async function confirmCancel() {
@@ -83,7 +94,7 @@ export function UserMeetingDetailsPage() {
           <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)}>
             <ArrowLeft className="size-4" />
           </Button>
-          <h1 className="text-2xl font-semibold tracking-tight">Meeting Details</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Meeting Details</h1>
         </div>
         <StatusBadge status={displayStatus} />
       </div>
@@ -110,6 +121,9 @@ export function UserMeetingDetailsPage() {
             >
               Reschedule
             </Button>
+            <Button variant="outline" onClick={() => setShowTransferDialog(true)}>
+              Transfer Organizer
+            </Button>
           </div>
         )}
 
@@ -130,6 +144,12 @@ export function UserMeetingDetailsPage() {
             {meeting.reassignmentReason ? ` — ${meeting.reassignmentReason}` : ""}
           </div>
         )}
+        {meeting.organizerTransferredAt && (
+          <div className="rounded-lg bg-accent p-3 text-sm text-accent-foreground">
+            Organizer transferred from {meeting.previousOrganizerName ?? "a previous organizer"} to{" "}
+            {meeting.bookedBy.name} on {new Date(meeting.organizerTransferredAt).toLocaleDateString()}
+          </div>
+        )}
 
         <MeetingDetailTabs
           tabs={[
@@ -140,7 +160,7 @@ export function UserMeetingDetailsPage() {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <AgendaCard
                     meetingId={meeting.id}
-                    isOrganizerOrAdmin={canEdit}
+                    isOrganizerOrAdmin={canEditContent}
                     previousMeetingId={meeting.previousMeetingId}
                     organizer={meeting.bookedBy}
                   />
@@ -149,6 +169,7 @@ export function UserMeetingDetailsPage() {
                     organizerId={meeting.bookedBy.id}
                     isOrganizerOrAdmin={canEdit}
                     currentUserId={user?.id}
+                    previousMeetingId={meeting.previousMeetingId}
                   />
                 </div>
               ),
@@ -159,7 +180,7 @@ export function UserMeetingDetailsPage() {
               content: (
                 <MinutesCard
                   meetingId={meeting.id}
-                  isOrganizerOrAdmin={canEdit}
+                  isOrganizerOrAdmin={canEditContent}
                   previousMeetingId={meeting.previousMeetingId}
                 />
               ),
@@ -170,7 +191,7 @@ export function UserMeetingDetailsPage() {
               content: (
                 <ActionItemsCard
                   meetingId={meeting.id}
-                  isOrganizerOrAdmin={canEdit}
+                  isOrganizerOrAdmin={canEditContent}
                   currentUserId={user?.id}
                   previousMeetingId={meeting.previousMeetingId}
                 />
@@ -202,6 +223,13 @@ export function UserMeetingDetailsPage() {
         destructive
         isLoading={cancelMeeting.isPending}
         onConfirm={confirmCancel}
+      />
+
+      <TransferOrganizerDialog
+        meetingId={meeting.id}
+        currentOrganizerId={meeting.bookedBy.id}
+        open={showTransferDialog}
+        onOpenChange={setShowTransferDialog}
       />
     </div>
   )

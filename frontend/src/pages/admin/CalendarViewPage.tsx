@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -16,18 +17,56 @@ import { MeetingDetailsDialogBody } from "@/components/shared/MeetingDetailsDial
 import { useMeetings } from "@/hooks/useMeetings"
 import { useRooms } from "@/hooks/useRooms"
 import { getWeekDays } from "@/lib/week"
-import { formatDateShort, toDateInputValue } from "@/lib/format"
+import { formatDateShort, parseDateInputValue, toDateInputValue } from "@/lib/format"
 
 export function CalendarViewPage() {
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [view, setView] = useState<"week" | "day">("week")
-  const [roomId, setRoomId] = useState("all")
+  const navigate = useNavigate()
+  // Backed by the URL, not useState — clicking a meeting now navigates away
+  // to its full details page and back, which remounts this page. Keeping
+  // the browsed date/view/room in the URL means "Back" actually lands you
+  // where you were, not reset to today's week view with no room filter.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const view = (searchParams.get("view") as "week" | "day" | null) ?? "week"
+  const roomId = searchParams.get("roomId") ?? "all"
+  // Kept as a string, not just a derived Date, so useMemo below can depend
+  // on a value that's actually stable across re-renders — a `new Date()`
+  // recreated inline every render would otherwise defeat the memoization
+  // (different object identity every time, even when the date hasn't
+  // changed) and force `days` to recompute on every unrelated render.
+  const dateStr = searchParams.get("date") ?? toDateInputValue(new Date())
+  const selectedDate = parseDateInputValue(dateStr)
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null)
+
+  function updateParams(updates: Record<string, string>) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        for (const [key, value] of Object.entries(updates)) {
+          if (value) next.set(key, value)
+          else next.delete(key)
+        }
+        return next
+      },
+      { replace: true }
+    )
+  }
+
+  function setSelectedDate(d: Date) {
+    updateParams({ date: toDateInputValue(d) })
+  }
+
+  function setView(v: "week" | "day") {
+    updateParams({ view: v })
+  }
+
+  function setRoomId(v: string) {
+    updateParams({ roomId: v === "all" ? "" : v })
+  }
 
   const { data: rooms } = useRooms({ pageSize: 100 })
   const days = useMemo(
-    () => (view === "week" ? getWeekDays(selectedDate) : [toDateInputValue(selectedDate)]),
-    [selectedDate, view]
+    () => (view === "week" ? getWeekDays(parseDateInputValue(dateStr)) : [dateStr]),
+    [dateStr, view]
   )
 
   const { data } = useMeetings({
@@ -50,7 +89,7 @@ export function CalendarViewPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Calendar View</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight">Calendar View</h1>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
         <div className="space-y-4">
@@ -97,7 +136,8 @@ export function CalendarViewPage() {
                   Rescheduled
                 </div>
                 <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
-                  <span className="size-2.5 rounded-full bg-muted-foreground/50" /> Cancelled
+                  <span className="size-2.5 rounded-full bg-destructive shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-destructive/60" />{" "}
+                Cancelled
                 </div>
               </div>
             </CardContent>
@@ -145,7 +185,11 @@ export function CalendarViewPage() {
       <Dialog open={!!selectedMeetingId} onOpenChange={(o) => !o && setSelectedMeetingId(null)}>
         <DialogContent className="sm:max-w-xl">
           {selectedMeetingId && (
-            <MeetingDetailsDialogBody key={selectedMeetingId} meetingId={selectedMeetingId} />
+            <MeetingDetailsDialogBody
+              key={selectedMeetingId}
+              meetingId={selectedMeetingId}
+              onViewDetails={() => navigate(`/admin/meetings/${selectedMeetingId}`)}
+            />
           )}
         </DialogContent>
       </Dialog>

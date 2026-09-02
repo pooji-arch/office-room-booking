@@ -30,7 +30,7 @@ export function MeetingEditPage() {
         >
           <ArrowLeft className="size-4" />
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">Edit & Reassign Meeting</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">Edit & Reassign Meeting</h1>
       </div>
 
       {isReadOnly ? (

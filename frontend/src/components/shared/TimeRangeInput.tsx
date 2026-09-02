@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  BUSINESS_HOURS_END,
-  BUSINESS_HOURS_START,
-  findConflict,
-  isSlotInPast,
-} from "@/lib/business-hours"
+import { TimeSelect } from "@/components/shared/TimeSelect"
+import { findConflict, isSlotInPast, suggestedStartTime, toHHmm, toMinutes } from "@/lib/business-hours"
 import { formatTime12h } from "@/lib/format"
 import type { BookedRange } from "@/types"
 
@@ -26,12 +21,6 @@ function getError(
 ): string | null {
   if (!start || !end) return null
   if (end <= start) return "End time must be after start time."
-  if (start < BUSINESS_HOURS_START) {
-    return `Start time must be at or after ${formatTime12h(BUSINESS_HOURS_START)}.`
-  }
-  if (end > BUSINESS_HOURS_END) {
-    return `End time must be at or before ${formatTime12h(BUSINESS_HOURS_END)}.`
-  }
   if (isSlotInPast(date, { start })) {
     return "This time has already passed."
   }
@@ -49,8 +38,15 @@ export function TimeRangeInput({
   defaultEnd,
   onChange,
 }: TimeRangeInputProps) {
-  const [start, setStart] = useState(defaultStart ?? "")
-  const [end, setEnd] = useState(defaultEnd ?? "")
+  // Real values, not blank — TimeSelect is Select-based and has no clean
+  // "empty" affordance the way a native time input does, so this always
+  // starts from a sensible real time (adjustable from there) rather than
+  // an unset state. When booking fresh (no defaults supplied) for today,
+  // that starting point is "now, rounded up" rather than a fixed 09:00 —
+  // otherwise opening the picker any time after 9am on the current day
+  // would suggest a start time that's already passed.
+  const [start, setStart] = useState(() => defaultStart ?? suggestedStartTime(date))
+  const [end, setEnd] = useState(() => defaultEnd ?? toHHmm(toMinutes(defaultStart ?? suggestedStartTime(date)) + 30))
 
   function commit(nextStart: string, nextEnd: string) {
     const error = getError(date, bookedRanges, nextStart, nextEnd)
@@ -74,15 +70,12 @@ export function TimeRangeInput({
           <Label className="mb-1.5" htmlFor="time-range-start">
             Start Time
           </Label>
-          <Input
+          <TimeSelect
             id="time-range-start"
-            type="time"
-            min={BUSINESS_HOURS_START}
-            max={BUSINESS_HOURS_END}
             value={start}
-            onChange={(e) => {
-              setStart(e.target.value)
-              commit(e.target.value, end)
+            onChange={(v) => {
+              setStart(v)
+              commit(v, end)
             }}
           />
         </div>
@@ -90,15 +83,12 @@ export function TimeRangeInput({
           <Label className="mb-1.5" htmlFor="time-range-end">
             End Time
           </Label>
-          <Input
+          <TimeSelect
             id="time-range-end"
-            type="time"
-            min={BUSINESS_HOURS_START}
-            max={BUSINESS_HOURS_END}
             value={end}
-            onChange={(e) => {
-              setEnd(e.target.value)
-              commit(start, e.target.value)
+            onChange={(v) => {
+              setEnd(v)
+              commit(start, v)
             }}
           />
         </div>

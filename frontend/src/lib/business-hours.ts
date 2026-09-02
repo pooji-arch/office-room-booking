@@ -1,8 +1,5 @@
 import type { BookedRange } from "@/types"
 
-export const BUSINESS_HOURS_START = "09:00"
-export const BUSINESS_HOURS_END = "18:00"
-
 export function toMinutes(hhmm: string) {
   const [h, m] = hhmm.split(":").map(Number)
   return h * 60 + m
@@ -42,4 +39,16 @@ export function isSlotInPast(date: string, slot: { start: string }) {
   if (date < today) return true
   if (date > today) return false
   return toMinutes(slot.start) <= nowMinutes()
+}
+
+// The time a fresh time-range picker should open with. A fixed "09:00" only
+// makes sense for a future date — for TODAY, by the time someone opens the
+// picker in the afternoon, 09:00 is already hours in the past and they'd
+// hit "This time has already passed" before touching anything. Rounds up
+// to the next stepMinutes increment (matching TimeSelect's own 5-minute
+// steps) so the suggested time is always genuinely still bookable.
+export function suggestedStartTime(date: string, stepMinutes = 5): string {
+  if (date !== todayInputValue()) return "09:00"
+  const rounded = Math.ceil((nowMinutes() + 1) / stepMinutes) * stepMinutes
+  return toHHmm(Math.min(rounded, 23 * 60 + 55))
 }

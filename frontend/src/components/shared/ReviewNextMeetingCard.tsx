@@ -4,8 +4,8 @@ import { toast } from "sonner"
 import { CalendarClock, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/shared/DatePicker"
 import { CardContentSkeleton } from "@/components/shared/PageSkeletons"
 import { useActionItems, useUpdateMeeting } from "@/hooks/useMeetings"
 import { formatDateLong } from "@/lib/format"
@@ -58,7 +58,7 @@ export function ReviewNextMeetingCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle className="flex items-center gap-2">
           <CalendarClock className="size-4 text-muted-foreground" />
           Review Date & Next Meeting
         </CardTitle>
@@ -72,7 +72,7 @@ export function ReviewNextMeetingCard({
               <div className="flex items-end gap-2">
                 <div className="flex-1">
                   <Label className="mb-1.5">Next Review Date</Label>
-                  <Input type="date" value={reviewDate} onChange={(e) => setReviewDate(e.target.value)} />
+                  <DatePicker value={reviewDate} onChange={setReviewDate} placeholder="Pick a date" className="w-full" />
                 </div>
                 <Button variant="outline" onClick={handleSaveReviewDate} disabled={updateMeeting.isPending}>
                   {updateMeeting.isPending && <Loader2 className="size-4 animate-spin" />}

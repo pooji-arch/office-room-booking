@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -8,25 +8,59 @@ import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { MeetingCalendarGrid } from "@/components/shared/MeetingCalendarGrid"
 import { CalendarPageSkeleton } from "@/components/shared/PageSkeletons"
 import { MeetingDetailsDialogBody } from "@/components/shared/MeetingDetailsDialogBody"
-import { useMeetings } from "@/hooks/useMeetings"
+import { useActionItems, useMeetingParticipants, useMeetings } from "@/hooks/useMeetings"
 import { useRoom } from "@/hooks/useRooms"
 import { useAuth } from "@/hooks/useAuth"
 import { getWeekDays } from "@/lib/week"
-import { formatDateShort, toDateInputValue } from "@/lib/format"
+import { formatDateShort, parseDateInputValue, toDateInputValue } from "@/lib/format"
 import type { Meeting } from "@/types"
 
 export function RoomCalendarViewPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [view, setView] = useState<"week" | "day">("week")
+  // Backed by the URL, not useState — clicking a meeting now navigates away
+  // to its full details page and back, which remounts this page. Keeping
+  // the browsed date/view in the URL means "Back" actually lands you where
+  // you were, not reset to today's week view (the same fix already applied
+  // to the meetings list pages for the same reason).
+  const [searchParams, setSearchParams] = useSearchParams()
+  const view = (searchParams.get("view") as "week" | "day" | null) ?? "week"
+  // Kept as a string, not just a derived Date, so useMemo below can depend
+  // on a value that's actually stable across re-renders — a `new Date()`
+  // recreated inline every render would otherwise defeat the memoization
+  // (different object identity every time, even when the date hasn't
+  // changed) and force `days` to recompute on every unrelated render.
+  const dateStr = searchParams.get("date") ?? toDateInputValue(new Date())
+  const selectedDate = parseDateInputValue(dateStr)
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null)
+
+  function updateParams(updates: Record<string, string>) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        for (const [key, value] of Object.entries(updates)) {
+          if (value) next.set(key, value)
+          else next.delete(key)
+        }
+        return next
+      },
+      { replace: true }
+    )
+  }
+
+  function setSelectedDate(d: Date) {
+    updateParams({ date: toDateInputValue(d) })
+  }
+
+  function setView(v: "week" | "day") {
+    updateParams({ view: v })
+  }
 
   const { data: room, isLoading: isLoadingRoom } = useRoom(id)
   const days = useMemo(
-    () => (view === "week" ? getWeekDays(selectedDate) : [toDateInputValue(selectedDate)]),
-    [selectedDate, view]
+    () => (view === "week" ? getWeekDays(parseDateInputValue(dateStr)) : [dateStr]),
+    [dateStr, view]
   )
 
   const { data } = useMeetings({
@@ -45,6 +79,20 @@ export function RoomCalendarViewPage() {
   function handleMeetingClick(meeting: Meeting) {
     setSelectedMeetingId(meeting.id)
   }
+
+  // Same three-way access check UserMeetingDetailsPage itself uses to decide
+  // whether to show "Meeting not found" — mirrored here so the popup's
+  // "View Full Details" button only appears when it would actually work.
+  // This calendar shows every meeting booked for the room, most of which
+  // belong to other people.
+  const selectedMeeting = data?.data.find((m) => m.id === selectedMeetingId)
+  const { data: selectedParticipants } = useMeetingParticipants(selectedMeetingId ?? undefined)
+  const { data: selectedActionItems } = useActionItems(selectedMeetingId ?? undefined)
+  const selectedMeetingBelongsToUser =
+    !!selectedMeeting &&
+    (selectedMeeting.bookedBy.id === user?.id ||
+      !!selectedParticipants?.some((p) => p.profileId === user?.id) ||
+      !!selectedActionItems?.some((item) => item.ownerId === user?.id))
 
   const rangeLabel =
     view === "week"
@@ -73,7 +121,7 @@ export function RoomCalendarViewPage() {
         >
           <ArrowLeft className="size-4" />
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">{room.name} · Calendar</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">{room.name} · Calendar</h1>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
@@ -104,7 +152,8 @@ export function RoomCalendarViewPage() {
                 Rescheduled
               </div>
               <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
-                <span className="size-2.5 rounded-full bg-muted-foreground/50" /> Cancelled
+                <span className="size-2.5 rounded-full bg-destructive shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-destructive/60" />{" "}
+                Cancelled
               </div>
             </CardContent>
           </Card>
@@ -152,7 +201,13 @@ export function RoomCalendarViewPage() {
       <Dialog open={!!selectedMeetingId} onOpenChange={(o) => !o && setSelectedMeetingId(null)}>
         <DialogContent className="sm:max-w-xl">
           {selectedMeetingId && (
-            <MeetingDetailsDialogBody key={selectedMeetingId} meetingId={selectedMeetingId} />
+            <MeetingDetailsDialogBody
+              key={selectedMeetingId}
+              meetingId={selectedMeetingId}
+              onViewDetails={
+                selectedMeetingBelongsToUser ? () => navigate(`/meetings/${selectedMeetingId}`) : undefined
+              }
+            />
           )}
         </DialogContent>
       </Dialog>

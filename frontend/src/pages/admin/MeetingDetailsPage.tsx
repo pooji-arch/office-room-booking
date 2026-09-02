@@ -59,7 +59,7 @@ export function MeetingDetailsPage() {
           <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)}>
             <ArrowLeft className="size-4" />
           </Button>
-          <h1 className="text-2xl font-semibold tracking-tight">Meeting Details</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Meeting Details</h1>
         </div>
         <StatusBadge status={displayStatus} />
       </div>
@@ -107,6 +107,12 @@ export function MeetingDetailsPage() {
             {meeting.reassignmentReason ? ` — ${meeting.reassignmentReason}` : ""}
           </div>
         )}
+        {meeting.organizerTransferredAt && (
+          <div className="rounded-lg bg-accent p-3 text-sm text-accent-foreground">
+            Organizer transferred from {meeting.previousOrganizerName ?? "a previous organizer"} to{" "}
+            {meeting.bookedBy.name} on {new Date(meeting.organizerTransferredAt).toLocaleDateString()}
+          </div>
+        )}
 
         <MeetingDetailTabs
           tabs={[
@@ -126,6 +132,7 @@ export function MeetingDetailsPage() {
                     organizerId={meeting.bookedBy.id}
                     isOrganizerOrAdmin={isOrganizerOrAdmin}
                     currentUserId={user?.id}
+                    previousMeetingId={meeting.previousMeetingId}
                   />
                 </div>
               ),

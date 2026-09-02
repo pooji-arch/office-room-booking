@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/shared/DatePicker"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
@@ -140,11 +141,12 @@ export function ActionItemDialog({
 
           <div>
             <Label className="mb-1.5">Due Date (optional)</Label>
-            <Input
-              type="date"
-              min={new Date().toISOString().slice(0, 10)}
+            <DatePicker
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              onChange={setDueDate}
+              placeholder="No due date"
+              minDate={new Date().toISOString().slice(0, 10)}
+              className="w-full"
             />
           </div>
 

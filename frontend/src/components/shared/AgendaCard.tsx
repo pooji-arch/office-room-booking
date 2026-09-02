@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CardContentSkeleton } from "@/components/shared/PageSkeletons"
 import { AddAgendaItemDialog, type AgendaAssignee } from "@/components/shared/AddAgendaItemDialog"
 import { useAgendaItems, useMeeting, useMeetingParticipants } from "@/hooks/useMeetings"
+import { formatDateMedium } from "@/lib/format"
 import type { AgendaItem } from "@/types"
 
 export function AgendaCard({
@@ -57,11 +58,12 @@ export function AgendaCard({
       {!!previousAgendaItems?.length && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2">
               <ListTodo className="size-4 text-muted-foreground" />
               Agenda History
               <span className="font-normal text-muted-foreground">
                 — from &quot;{previousMeeting?.title ?? previousMeeting?.purpose}&quot;
+                {previousMeeting?.date && ` · ${formatDateMedium(previousMeeting.date)}`}
               </span>
             </CardTitle>
           </CardHeader>
@@ -81,7 +83,7 @@ export function AgendaCard({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2">
               <ListTodo className="size-4 text-muted-foreground" />
               Agenda
             </CardTitle>

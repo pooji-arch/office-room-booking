@@ -32,7 +32,7 @@ import { EmptyState } from "@/components/shared/EmptyState"
 import { TimeRangeInput } from "@/components/shared/TimeRangeInput"
 import { RoomDetailsSkeleton } from "@/components/shared/PageSkeletons"
 import { useRoom, useRoomAvailability } from "@/hooks/useRooms"
-import { useAddAgendaItem, useAddParticipant, useCreateMeeting, useMeeting } from "@/hooks/useMeetings"
+import { useAddParticipant, useCreateMeeting, useMeeting } from "@/hooks/useMeetings"
 import { useUsers } from "@/hooks/useUsers"
 import { useAuth } from "@/hooks/useAuth"
 import { meetingsService } from "@/services/meetings"
@@ -83,7 +83,6 @@ export function RoomDetailsPage() {
   const { data: usersData } = useUsers({ pageSize: 100 })
   const createMeeting = useCreateMeeting()
   const addParticipant = useAddParticipant()
-  const addAgendaItem = useAddAgendaItem()
 
   const departments = useMemo(
     () =>
@@ -132,26 +131,20 @@ export function RoomDetailsPage() {
         } catch {
           carryForwardFailed = true
         }
-
-        try {
-          const previousActionItems = await meetingsService.listActionItems(previousMeetingId)
-          const openItems = previousActionItems.filter((item) => item.status !== "DONE")
-          for (const item of openItems) {
-            await addAgendaItem.mutateAsync({
-              meetingId: meeting.id,
-              input: { topic: `Follow-up: ${item.title}`, ownerId: item.ownerId },
-            })
-          }
-        } catch {
-          carryForwardFailed = true
-        }
       }
 
+      // Open action items from the previous meeting are NOT copied into new
+      // agenda items here anymore — they'd just pile up as duplicate
+      // "Follow-up: X" topics every time a chain of meetings continues.
+      // Instead they stay as the same, single action item, and its progress
+      // (Open/In Progress/Delayed/Done) is tracked and editable directly
+      // from the follow-up meeting's Action Items History panel — see
+      // ActionItemsCard's previous-meeting table.
       if (previousMeetingId) {
         toast.success(
           carryForwardFailed
-            ? "Follow-up meeting booked, but some details couldn't be copied — check the Agenda & RSVPs and Action Items tabs."
-            : "Follow-up meeting booked — participants and open action items were carried forward."
+            ? "Follow-up meeting booked, but participants couldn't be copied — check the Agenda & RSVPs tab."
+            : "Follow-up meeting booked — participants were carried forward."
         )
       } else {
         toast.success("Room booked")
@@ -175,7 +168,7 @@ export function RoomDetailsPage() {
           <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)}>
             <ArrowLeft className="size-4" />
           </Button>
-          <h1 className="text-2xl font-semibold tracking-tight">{room.name}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">{room.name}</h1>
           <StatusBadge status={room.status} />
         </div>
         {/* replace, not a normal push: Calendar View's own back arrow

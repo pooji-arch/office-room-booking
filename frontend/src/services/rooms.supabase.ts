@@ -1,6 +1,5 @@
 import { supabase } from "./supabaseClient"
 import type { Room, RoomAvailability } from "@/types"
-import { BUSINESS_HOURS_END, BUSINESS_HOURS_START } from "@/lib/business-hours"
 import type { ListRoomsParams, RoomInput, RoomsService } from "./types"
 
 const BUCKET = "room-images"
@@ -127,7 +126,6 @@ export const supabaseRoomsService: RoomsService = {
       date,
       roomId: id,
       roomBookable,
-      businessHours: { start: BUSINESS_HOURS_START, end: BUSINESS_HOURS_END },
       bookedRanges: (bookings ?? []).map((b) => ({
         start: (b.start_time as string).slice(0, 5),
         end: (b.end_time as string).slice(0, 5),

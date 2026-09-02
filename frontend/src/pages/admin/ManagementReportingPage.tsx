@@ -21,7 +21,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { StatusBadge } from "@/components/shared/StatusBadge"
-import { Sparkline } from "@/components/shared/Sparkline"
 import { CardContentSkeleton } from "@/components/shared/PageSkeletons"
 import {
   useActionItemStatusHistory,
@@ -129,11 +128,33 @@ function trendDelta(current: number, previous: number, upIsGood: boolean, unit: 
 }
 
 const TREND_TONE_CLASS = {
-  success: "text-success",
-  destructive: "text-destructive",
-  warning: "text-warning",
-  neutral: "text-muted-foreground",
+  success: "bg-success/10 text-success",
+  destructive: "bg-destructive/10 text-destructive",
+  warning: "bg-warning/15 text-warning-foreground",
+  neutral: "bg-muted text-muted-foreground",
 } as const
+
+// Each KPI gets its own hue end-to-end (wash + icon badge + border) rather
+// than one neutral card style repeated four times — the whole point of the
+// redesign was "colorful," not just "smaller."
+const ACCENT_STYLES = {
+  primary: {
+    card: "border-primary/20 bg-gradient-to-br from-primary/12 via-card to-card",
+    icon: "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/30",
+  },
+  success: {
+    card: "border-success/20 bg-gradient-to-br from-success/12 via-card to-card",
+    icon: "bg-gradient-to-br from-success to-success/70 text-success-foreground shadow-lg shadow-success/30",
+  },
+  info: {
+    card: "border-chart-4/20 bg-gradient-to-br from-chart-4/12 via-card to-card",
+    icon: "bg-gradient-to-br from-chart-4 to-chart-4/70 text-white shadow-lg shadow-chart-4/30",
+  },
+  warning: {
+    card: "border-warning/25 bg-gradient-to-br from-warning/15 via-card to-card",
+    icon: "bg-gradient-to-br from-warning to-warning/70 text-warning-foreground shadow-lg shadow-warning/30",
+  },
+} as const satisfies Record<string, { card: string; icon: string }>
 
 function exportReportCsv(items: ActionItemWithMeeting[]) {
   const header = ["Title", "Meeting", "Department", "Owner", "Due Date", "Priority", "Status"]
@@ -156,10 +177,6 @@ function exportReportCsv(items: ActionItemWithMeeting[]) {
   a.download = `management-report-${isoDate(new Date())}.csv`
   a.click()
   URL.revokeObjectURL(url)
-}
-
-function dailyCounts(dates: string[], last7: string[]) {
-  return last7.map((day) => dates.filter((d) => d === day).length)
 }
 
 export function ManagementReportingPage() {
@@ -206,62 +223,38 @@ export function ManagementReportingPage() {
   const delayedCount = itemsInRange.filter((i) => i.status === "DELAYED").length
   const delayedPrevCount = itemsInPrevRange.filter((i) => i.status === "DELAYED").length
 
-  const last7Days = useMemo(() => Array.from({ length: 7 }, (_, i) => isoDate(addDays(new Date(), -(6 - i)))), [])
-  const trackedSparkline = useMemo(() => dailyCounts(meetings.map((m) => m.date), last7Days), [meetings, last7Days])
-  const heldSparkline = useMemo(
-    () =>
-      last7Days.map((day) => meetings.filter((m) => m.date === day && meetingDisplayStatus(m) === "COMPLETED").length),
-    [meetings, last7Days]
-  )
-  const closureSparkline = useMemo(
-    () =>
-      last7Days.map((day) => {
-        const dayItems = items.filter((i) => i.createdAt.slice(0, 10) === day)
-        return pct(dayItems.filter((i) => i.status === "DONE").length, dayItems.length)
-      }),
-    [items, last7Days]
-  )
-  const delayedSparkline = useMemo(
-    () => dailyCounts(items.filter((i) => i.status === "DELAYED").map((i) => i.createdAt.slice(0, 10)), last7Days),
-    [items, last7Days]
-  )
-
   const KPI_CARDS = [
     {
       key: "tracked",
       label: "Meetings tracked",
       icon: CalendarRange,
-      tone: "bg-primary/10 text-primary",
+      accent: "primary",
       value: String(trackedCount),
       delta: hasComparison ? trendDelta(trackedCount, meetingsInPrevRange.length, true) : null,
-      sparkline: trackedSparkline,
     },
     {
       key: "held",
       label: "Meetings held",
       icon: CheckCircle2,
-      tone: "bg-success/10 text-success",
+      accent: "success",
       value: String(heldCount),
       delta: hasComparison ? trendDelta(heldCount, heldPrevCount, true) : null,
-      sparkline: heldSparkline,
     },
     {
       key: "closure",
       label: "Action item closure rate",
       icon: TrendingUp,
-      tone: "bg-chart-4/10 text-chart-4",
+      accent: "info",
       value: `${closureRate}%`,
       delta: hasComparison ? trendDelta(closureRate, closureRatePrev, true, "points") : null,
-      sparkline: closureSparkline,
     },
     {
       key: "delayed",
       label: "Delayed items",
       icon: AlertTriangle,
-      tone: "bg-warning/10 text-warning",
+      accent: "warning",
       value: String(delayedCount),
       delta: hasComparison ? trendDelta(delayedCount, delayedPrevCount, false) : null,
-      sparkline: delayedSparkline,
     },
   ] as const
 
@@ -298,7 +291,7 @@ export function ManagementReportingPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Management Reporting</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Management Reporting</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             A live rollup of meeting activity and action item health across the organization.
           </p>
@@ -342,26 +335,33 @@ export function ManagementReportingPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {KPI_CARDS.map(({ key, label, icon: Icon, tone, value, delta, sparkline }) => (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {KPI_CARDS.map(({ key, label, icon: Icon, accent, value, delta }) => (
               <Card
                 key={key}
-                className="overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5"
+                className={cn(
+                  "overflow-hidden border py-0 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md",
+                  ACCENT_STYLES[accent].card
+                )}
               >
-                <CardContent className="space-y-3 pt-5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className={cn("flex size-9 items-center justify-center rounded-lg", tone)}>
-                      <Icon className="size-4.5" />
-                    </div>
-                    <Sparkline values={sparkline} className="h-7 w-16 shrink-0" />
+                <CardContent className="space-y-2 p-3.5">
+                  <div className={cn("flex size-8 items-center justify-center rounded-lg", ACCENT_STYLES[accent].icon)}>
+                    <Icon className="size-4" />
                   </div>
                   <div>
-                    <p className="text-3xl font-bold">{value}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{label}</p>
-                    {delta && (
-                      <p className={cn("mt-1.5 text-xs font-medium", TREND_TONE_CLASS[delta.tone])}>{delta.text}</p>
-                    )}
+                    <p className="text-2xl font-bold tracking-tight">{value}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{label}</p>
                   </div>
+                  {delta && (
+                    <span
+                      className={cn(
+                        "inline-block rounded-full px-2 py-0.5 text-[11px] font-medium",
+                        TREND_TONE_CLASS[delta.tone]
+                      )}
+                    >
+                      {delta.text}
+                    </span>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -369,7 +369,7 @@ export function ManagementReportingPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
+              <CardTitle className="flex items-center gap-2">
                 <Clock className="size-4 text-muted-foreground" />
                 Action items approaching due
                 <span className="font-normal text-muted-foreground">— next 14 days</span>
@@ -428,7 +428,7 @@ export function ManagementReportingPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
+              <CardTitle className="flex items-center gap-2">
                 <CalendarRange className="size-4 text-muted-foreground" />
                 Timeline — action items vs. due date
               </CardTitle>
@@ -468,7 +468,7 @@ export function ManagementReportingPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
+              <CardTitle className="flex items-center gap-2">
                 <History className="size-4 text-muted-foreground" />
                 Audit Trail
               </CardTitle>

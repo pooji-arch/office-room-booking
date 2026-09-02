@@ -26,7 +26,7 @@ export function StatCard({ icon: Icon, label, value, tone = "primary", className
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm text-muted-foreground">{label}</p>
-          <p className="text-2xl font-semibold tracking-tight text-foreground">{value}</p>
+          <p className="text-2xl font-extrabold tracking-tight text-foreground">{value}</p>
         </div>
       </CardContent>
     </Card>

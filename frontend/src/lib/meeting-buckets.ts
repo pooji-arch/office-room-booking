@@ -75,3 +75,14 @@ export function meetingDisplayStatus(
   if (m.reassignedAt || m.rescheduledAt) return "RESCHEDULED"
   return "CONFIRMED"
 }
+
+// followUpNumber is the meeting's own position in its chain (1 = the
+// original meeting, 2 = its first follow-up, 3 = a follow-up of that
+// follow-up, ...). The badge counts FOLLOW-UPS, not chain position, so the
+// first follow-up just reads "Follow-up" and only the second one onward
+// gets a number: "Follow-up ×2", "Follow-up ×3".
+export function followUpLabel(followUpNumber: number): string | null {
+  const hopCount = followUpNumber - 1
+  if (hopCount < 1) return null
+  return hopCount === 1 ? "Follow-up" : `Follow-up ×${hopCount}`
+}

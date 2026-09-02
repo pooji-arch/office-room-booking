@@ -87,13 +87,13 @@ export function MeetingReschedulePage() {
         >
           <ArrowLeft className="size-4" />
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">Reschedule Meeting</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">Reschedule Meeting</h1>
       </div>
 
       <div className="max-w-xl">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{meeting.title || meeting.purpose}</CardTitle>
+            <CardTitle>{meeting.title || meeting.purpose}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Popover open={dateTimeOpen} onOpenChange={setDateTimeOpen}>

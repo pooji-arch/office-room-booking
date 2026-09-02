@@ -34,7 +34,7 @@ export function MeetingHistoryList({ meetingId }: { meetingId: string }) {
           onClick={() => setShowHistory((v) => !v)}
           className="flex w-full items-center justify-between text-left"
         >
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2">
             <History className="size-4 text-muted-foreground" />
             Reschedule History ({history.length})
           </CardTitle>

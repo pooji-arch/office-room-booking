@@ -1,3 +1,5 @@
+import { ArrowRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { MeetingDetailsCard } from "@/components/shared/MeetingDetailsCard"
@@ -6,11 +8,18 @@ import { DialogBodySkeleton } from "@/components/shared/PageSkeletons"
 import { useMeeting } from "@/hooks/useMeetings"
 import { meetingDisplayStatus } from "@/lib/meeting-buckets"
 
-// The Admin Calendar's "expand a meeting in place" popup — read-only
-// details only, regardless of status. Editing/reassigning still happens on
-// the dedicated admin/MeetingEditPage.tsx (reached via the Eye/View
-// action), not here.
-export function MeetingDetailsDialogBody({ meetingId }: { meetingId: string }) {
+// The calendar's "expand a meeting in place" popup — read-only summary only.
+// Editing/reassigning/agenda/minutes/action items all live on the full
+// meeting details page, reached from here via "View Full Details" (the
+// caller supplies onViewDetails since only it knows whether that's
+// /meetings/:id or /admin/meetings/:id).
+export function MeetingDetailsDialogBody({
+  meetingId,
+  onViewDetails,
+}: {
+  meetingId: string
+  onViewDetails?: () => void
+}) {
   const { data: meeting, isLoading } = useMeeting(meetingId)
 
   if (isLoading || !meeting) {
@@ -28,6 +37,13 @@ export function MeetingDetailsDialogBody({ meetingId }: { meetingId: string }) {
 
       <MeetingDetailsCard meeting={meeting} />
       <MeetingHistoryList meetingId={meeting.id} />
+
+      {onViewDetails && (
+        <Button className="w-full" onClick={onViewDetails}>
+          View Full Details
+          <ArrowRight className="size-4" />
+        </Button>
+      )}
     </div>
   )
 }

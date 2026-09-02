@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from "react"
-import { Bell, HelpCircle, Home, LogOut, Menu, Presentation, User } from "lucide-react"
+import { Bell, Home, LogOut, Menu, Presentation, User } from "lucide-react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { AppSidebar, type SidebarNavSection } from "@/components/shared/AppSidebar"
 import { Logo } from "@/components/shared/Logo"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/useAuth"
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed"
-import { useSidebarWidth } from "@/hooks/useSidebarWidth"
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications"
 import { useScrollRestoration } from "@/hooks/useScrollRestoration"
 
@@ -17,7 +15,6 @@ export function UserLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [collapsed, setCollapsed] = useSidebarCollapsed()
-  const [sidebarWidth, setSidebarWidth] = useSidebarWidth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { data: unreadCount } = useUnreadNotificationsCount()
   const mainRef = useRef<HTMLElement>(null)
@@ -30,7 +27,6 @@ export function UserLayout() {
         { to: "/meetings", label: "Meetings", icon: Presentation },
         { to: "/profile", label: "Profile", icon: User },
         { to: "/notifications", label: "Notifications", icon: Bell, badge: unreadCount },
-        { to: "/help", label: "Help & Support", icon: HelpCircle },
       ],
     },
   ]
@@ -53,19 +49,13 @@ export function UserLayout() {
         onToggleCollapsed={() => setCollapsed((c) => !c)}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
-        width={sidebarWidth}
-        onWidthChange={setSidebarWidth}
-        footer={(footerCollapsed) => (
+        footer={() => (
           <button
             onClick={handleLogout}
-            title={footerCollapsed ? "Logout" : undefined}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              footerCollapsed && "lg:justify-center lg:px-2"
-            )}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <LogOut className="size-4.5 shrink-0" />
-            <span className={cn(footerCollapsed && "lg:hidden")}>Logout</span>
+            <span className="sidebar-label">Logout</span>
           </button>
         )}
       />

@@ -75,6 +75,7 @@ export interface Meeting {
   department?: string
   reviewDate?: string
   previousMeetingId?: string
+  followUpNumber: number
   attendees?: number
   status: MeetingStatus
   cancelledAt?: string
@@ -83,6 +84,8 @@ export interface Meeting {
   reassignedByName?: string
   reassignmentReason?: string
   rescheduledAt?: string
+  organizerTransferredAt?: string
+  previousOrganizerName?: string
   createdAt: string
 }
 
@@ -107,7 +110,6 @@ export interface RoomAvailability {
   date: string
   roomId: string
   roomBookable: boolean
-  businessHours: { start: string; end: string }
   bookedRanges: BookedRange[]
 }
 
@@ -168,6 +170,7 @@ export type NotificationType =
   | "ACTION_ITEM_DUE_SOON"
   | "ACTION_ITEM_OVERDUE_DIGEST"
   | "MOM_PENDING_NUDGE"
+  | "MEETING_ORGANIZER_CHANGED"
 
 export interface Notification {
   id: string

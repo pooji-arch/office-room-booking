@@ -3,36 +3,20 @@ import { useNavigate } from "react-router-dom"
 import { DoorOpen, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { DatePicker } from "@/components/shared/DatePicker"
+import { TimeSelect } from "@/components/shared/TimeSelect"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { RoomCard } from "@/components/shared/RoomCard"
 import { useRooms } from "@/hooks/useRooms"
 import { useMeetings } from "@/hooks/useMeetings"
-import { BUSINESS_HOURS_END, BUSINESS_HOURS_START } from "@/lib/business-hours"
-
-const CAPACITY_OPTIONS = [
-  { value: "any", label: "Any Capacity" },
-  { value: "2", label: "2+ people" },
-  { value: "4", label: "4+ people" },
-  { value: "6", label: "6+ people" },
-  { value: "10", label: "10+ people" },
-  { value: "20", label: "20+ people" },
-]
 
 interface Filters {
   search: string
   date: string
   time: string
-  capacity: string
 }
 
-const defaultFilters: Filters = { search: "", date: "", time: "", capacity: "any" }
+const defaultFilters: Filters = { search: "", date: "", time: "" }
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -66,12 +50,11 @@ export function HomePage() {
     )
   }
 
-  const minCapacity = applied.capacity === "any" ? 0 : Number(applied.capacity)
   const rooms = (data?.data ?? []).filter(
-    (r) => r.status !== "UNAVAILABLE" && r.capacity >= minCapacity && !isRoomBusyAtSearchedTime(r.id)
+    (r) => r.status !== "UNAVAILABLE" && !isRoomBusyAtSearchedTime(r.id)
   )
   function isDefault(f: Filters) {
-    return f.search === "" && f.date === "" && f.time === "" && f.capacity === "any"
+    return f.search === "" && f.date === "" && f.time === ""
   }
   const hasActiveFilters = !isDefault(draft) || !isDefault(applied)
 
@@ -94,7 +77,7 @@ export function HomePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Find a Room</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight">Find a Room</h1>
 
       <div className="space-y-3 rounded-xl border bg-card p-4">
         <div className="relative">
@@ -111,11 +94,11 @@ export function HomePage() {
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">Date</p>
             <div className="relative">
-              <Input
-                type="date"
+              <DatePicker
                 value={draft.date}
-                onChange={(e) => setDraft((f) => ({ ...f, date: e.target.value }))}
-                className="w-[150px] pr-7"
+                onChange={(v) => setDraft((f) => ({ ...f, date: v }))}
+                placeholder="Any date"
+                className="w-[150px]"
               />
               {draft.date && (
                 <button
@@ -131,44 +114,28 @@ export function HomePage() {
           </div>
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">Time</p>
-            <div className="relative">
-              <Input
-                type="time"
-                min={BUSINESS_HOURS_START}
-                max={BUSINESS_HOURS_END}
-                value={draft.time}
-                onChange={(e) => setDraft((f) => ({ ...f, time: e.target.value }))}
-                className="w-[130px] pr-7"
-              />
-              {draft.time && (
+            {draft.time ? (
+              <div className="flex items-center gap-1">
+                <TimeSelect value={draft.time} onChange={(v) => setDraft((f) => ({ ...f, time: v }))} />
                 <button
                   type="button"
                   aria-label="Clear time"
                   onClick={() => setDraft((f) => ({ ...f, time: "" }))}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <X className="size-3.5" />
                 </button>
-              )}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">Capacity</p>
-            <Select
-              value={draft.capacity}
-              onValueChange={(v) => setDraft((f) => ({ ...f, capacity: v }))}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CAPACITY_OPTIONS.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-[150px] justify-start font-normal text-muted-foreground"
+                onClick={() => setDraft((f) => ({ ...f, time: "09:00" }))}
+              >
+                Any time
+              </Button>
+            )}
           </div>
           <Button onClick={handleSearch}>
             <Search className="size-4" />
@@ -191,7 +158,7 @@ export function HomePage() {
           <EmptyState
             icon={DoorOpen}
             title="No rooms match your search"
-            description="Try a different search term or lower the capacity filter."
+            description="Try a different search term or date/time."
           />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
