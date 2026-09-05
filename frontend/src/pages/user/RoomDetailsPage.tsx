@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -33,12 +33,11 @@ import { TimeRangeInput } from "@/components/shared/TimeRangeInput"
 import { RoomDetailsSkeleton } from "@/components/shared/PageSkeletons"
 import { useRoom, useRoomAvailability } from "@/hooks/useRooms"
 import { useAddParticipant, useCreateMeeting, useMeeting } from "@/hooks/useMeetings"
-import { useUsers } from "@/hooks/useUsers"
 import { useAuth } from "@/hooks/useAuth"
 import { meetingsService } from "@/services/meetings"
 import { formatDateMedium, formatTimeRange, parseDateInputValue, toDateInputValue } from "@/lib/format"
 import { MEETING_TYPE_OPTIONS } from "@/lib/meeting-buckets"
-import { cn, dedupeCaseInsensitive } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 import type { MeetingType } from "@/types"
 
 const schema = z.object({
@@ -83,21 +82,17 @@ export function RoomDetailsPage() {
 
   const { data: room, isLoading } = useRoom(id)
   const { data: availability, isLoading: isLoadingSlots } = useRoomAvailability(id, dateStr)
-  const { data: usersData } = useUsers({ pageSize: 100 })
   const createMeeting = useCreateMeeting()
   const addParticipant = useAddParticipant()
-
-  const departments = useMemo(
-    () => dedupeCaseInsensitive((usersData?.data ?? []).map((u) => u.department).filter(Boolean) as string[]),
-    [usersData]
-  )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       type: (searchParams.get("type") as MeetingType | null) ?? "INTERNAL",
       purpose: searchParams.get("purpose") ?? "",
-      department: searchParams.get("department") ?? "",
+      // The organizer's own department, not a pick — a user belongs to
+      // exactly one department already, so there's nothing to choose here.
+      department: user?.department ?? "",
     },
   })
 
@@ -320,21 +315,12 @@ export function RoomDetailsPage() {
                       name="department"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Department *</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select department" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {departments.map((dept) => (
-                                <SelectItem key={dept} value={dept}>
-                                  {dept}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Department</FormLabel>
+                          {/* Your own department, not a pick — every user
+                              belongs to exactly one, set on their profile. */}
+                          <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm text-muted-foreground">
+                            {field.value || "Not set on your profile"}
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
