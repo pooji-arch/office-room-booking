@@ -238,6 +238,7 @@ interface AgendaItemRow {
   meeting_id: string
   topic: string
   owner_id: string | null
+  owner_name: string | null
   allotted_minutes: number
   sort_order: number
   created_at: string
@@ -250,7 +251,7 @@ function mapAgendaItem(row: AgendaItemRow): AgendaItem {
     meetingId: row.meeting_id,
     topic: row.topic,
     ownerId: row.owner_id ?? undefined,
-    ownerName: row.owner?.name ?? undefined,
+    ownerName: row.owner?.name ?? row.owner_name ?? undefined,
     allottedMinutes: row.allotted_minutes,
     sortOrder: row.sort_order,
     createdAt: row.created_at,
@@ -312,6 +313,7 @@ interface ActionItemRow {
   title: string
   description: string | null
   owner_id: string | null
+  owner_name: string | null
   due_date: string | null
   status: ActionItem["status"]
   priority: ActionItem["priority"]
@@ -328,7 +330,7 @@ function mapActionItem(row: ActionItemRow): ActionItem {
     title: row.title,
     description: row.description ?? undefined,
     ownerId: row.owner_id ?? undefined,
-    ownerName: row.owner?.name ?? undefined,
+    ownerName: row.owner?.name ?? row.owner_name ?? undefined,
     dueDate: row.due_date ?? undefined,
     status: row.status,
     priority: row.priority,
@@ -641,7 +643,8 @@ export const supabaseMeetingsService: MeetingsService = {
       .from("meeting_participants")
       .insert({
         meeting_id: meetingId,
-        profile_id: input.profileId,
+        profile_id: input.profileId || null,
+        external_name: input.externalName || null,
         role: input.role ?? "PARTICIPANT",
       })
       .select("*, profile:profiles(name,email)")
@@ -671,11 +674,6 @@ export const supabaseMeetingsService: MeetingsService = {
     if (error) throw friendlyError(error)
   },
 
-  async resendParticipantInvite(_meetingId, participantId) {
-    const { error } = await supabase.rpc("resend_participant_invite", { p_participant_id: participantId })
-    if (error) throw friendlyError(error)
-  },
-
   async listAgendaItems(meetingId) {
     const { data, error } = await supabase
       .from("agenda_items")
@@ -693,7 +691,7 @@ export const supabaseMeetingsService: MeetingsService = {
       .insert({
         meeting_id: meetingId,
         topic: input.topic,
-        owner_id: input.ownerId || null,
+        owner_name: input.ownerName || null,
         allotted_minutes: input.allottedMinutes ?? 10,
       })
       .select("*, owner:profiles(name)")
@@ -707,7 +705,7 @@ export const supabaseMeetingsService: MeetingsService = {
       .from("agenda_items")
       .update({
         ...(input.topic !== undefined && { topic: input.topic }),
-        ...(input.ownerId !== undefined && { owner_id: input.ownerId || null }),
+        ...(input.ownerName !== undefined && { owner_name: input.ownerName || null }),
         ...(input.allottedMinutes !== undefined && { allotted_minutes: input.allottedMinutes }),
       })
       .eq("id", agendaItemId)
@@ -833,7 +831,7 @@ export const supabaseMeetingsService: MeetingsService = {
         minutes_item_id: input.minutesItemId || null,
         title: input.title,
         description: input.description || null,
-        owner_id: input.ownerId || null,
+        owner_name: input.ownerName || null,
         due_date: input.dueDate || null,
         priority: input.priority ?? "MEDIUM",
       })
@@ -849,7 +847,7 @@ export const supabaseMeetingsService: MeetingsService = {
       .update({
         ...(input.title !== undefined && { title: input.title }),
         ...(input.description !== undefined && { description: input.description || null }),
-        ...(input.ownerId !== undefined && { owner_id: input.ownerId || null }),
+        ...(input.ownerName !== undefined && { owner_name: input.ownerName || null }),
         ...(input.dueDate !== undefined && { due_date: input.dueDate || null }),
         ...(input.priority !== undefined && { priority: input.priority }),
       })

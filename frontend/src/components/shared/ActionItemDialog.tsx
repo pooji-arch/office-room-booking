@@ -20,7 +20,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useActiveUsers } from "@/hooks/useUsers"
 import { useAddActionItem, useMinutesItems, useUpdateActionItem } from "@/hooks/useMeetings"
 import type { ActionItem, ActionItemPriority } from "@/types"
 
@@ -36,14 +35,13 @@ export function ActionItemDialog({
   actionItem?: ActionItem
 }) {
   const isEditMode = !!actionItem
-  const { data: users } = useActiveUsers()
   const { data: minutesItems } = useMinutesItems(meetingId)
   const addActionItem = useAddActionItem()
   const updateActionItem = useUpdateActionItem()
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [ownerId, setOwnerId] = useState("")
+  const [ownerName, setOwnerName] = useState("")
   const [dueDate, setDueDate] = useState("")
   const [priority, setPriority] = useState<ActionItemPriority>("MEDIUM")
   const [minutesItemId, setMinutesItemId] = useState("")
@@ -52,7 +50,7 @@ export function ActionItemDialog({
     if (!open) return
     setTitle(actionItem?.title ?? "")
     setDescription(actionItem?.description ?? "")
-    setOwnerId(actionItem?.ownerId ?? "")
+    setOwnerName(actionItem?.ownerName ?? "")
     setDueDate(actionItem?.dueDate ?? "")
     setPriority(actionItem?.priority ?? "MEDIUM")
     setMinutesItemId("")
@@ -74,29 +72,26 @@ export function ActionItemDialog({
           input: {
             title: title.trim(),
             description: description.trim() || undefined,
-            ownerId: ownerId || undefined,
+            ownerName: ownerName.trim() || undefined,
             dueDate: dueDate || undefined,
             priority,
           },
         })
         toast.success("Action item updated")
       } else {
-        const owner = users?.data.find((u) => u.id === ownerId)
         await addActionItem.mutateAsync({
           meetingId,
           input: {
             title: title.trim(),
             description: description.trim() || undefined,
-            ownerId: ownerId || undefined,
+            ownerName: ownerName.trim() || undefined,
             dueDate: dueDate || undefined,
             minutesItemId: minutesItemId || undefined,
             priority,
           },
         })
         toast.success(
-          owner
-            ? `Action item assigned to ${owner.name} — notifications aren't wired up yet, they'll see this once they check the app.`
-            : "Action item added"
+          ownerName.trim() ? `Action item assigned to ${ownerName.trim()}.` : "Action item added"
         )
       }
       onOpenChange(false)
@@ -125,18 +120,11 @@ export function ActionItemDialog({
 
           <div>
             <Label className="mb-1.5">Owner (optional)</Label>
-            <Select value={ownerId} onValueChange={setOwnerId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="No owner assigned" />
-              </SelectTrigger>
-              <SelectContent>
-                {(users?.data ?? []).map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name} — {u.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              value={ownerName}
+              onChange={(e) => setOwnerName(e.target.value)}
+              placeholder="Who's responsible for this"
+            />
           </div>
 
           <div>

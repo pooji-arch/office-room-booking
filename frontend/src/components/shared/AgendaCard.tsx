@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { ListTodo, Pencil, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CardContentSkeleton } from "@/components/shared/PageSkeletons"
-import { AddAgendaItemDialog, type AgendaAssignee } from "@/components/shared/AddAgendaItemDialog"
-import { useAgendaItems, useMeeting, useMeetingParticipants } from "@/hooks/useMeetings"
+import { AddAgendaItemDialog } from "@/components/shared/AddAgendaItemDialog"
+import { useAgendaItems, useMeeting } from "@/hooks/useMeetings"
 import { formatDateMedium } from "@/lib/format"
 import type { AgendaItem } from "@/types"
 
@@ -12,36 +12,16 @@ export function AgendaCard({
   meetingId,
   isOrganizerOrAdmin,
   previousMeetingId,
-  organizer,
 }: {
   meetingId: string
   isOrganizerOrAdmin: boolean
   previousMeetingId?: string
-  // Whoever booked the meeting — always eligible as an agenda owner even
-  // though they aren't a row in meeting_participants themselves.
-  organizer: AgendaAssignee
 }) {
   const { data: agendaItems, isLoading } = useAgendaItems(meetingId)
   const { data: previousMeeting } = useMeeting(previousMeetingId)
   const { data: previousAgendaItems } = useAgendaItems(previousMeetingId)
-  const { data: participants } = useMeetingParticipants(meetingId)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingItem, setEditingItem] = useState<AgendaItem | undefined>(undefined)
-
-  // Only people actually attending can be handed an agenda topic — assigning
-  // it to someone outside the meeting left them owning something they'd
-  // never even hear discussed.
-  const eligibleAssignees = useMemo<AgendaAssignee[]>(() => {
-    const seen = new Set<string>([organizer.id])
-    const list: AgendaAssignee[] = [organizer]
-    for (const p of participants ?? []) {
-      if (p.profileId && !seen.has(p.profileId)) {
-        seen.add(p.profileId)
-        list.push({ id: p.profileId, name: p.name, email: p.email })
-      }
-    }
-    return list
-  }, [organizer, participants])
 
   function openEdit(item: AgendaItem) {
     setEditingItem(item)
@@ -126,7 +106,6 @@ export function AgendaCard({
             open={showAddDialog}
             onOpenChange={setShowAddDialog}
             agendaItem={editingItem}
-            eligibleAssignees={eligibleAssignees}
           />
         )}
       </Card>

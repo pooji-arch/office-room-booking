@@ -179,11 +179,9 @@ export function UserMeetingDetailsPage() {
                     meetingId={meeting.id}
                     isOrganizerOrAdmin={canEditContent}
                     previousMeetingId={meeting.previousMeetingId}
-                    organizer={meeting.bookedBy}
                   />
                   <MeetingParticipantsCard
                     meetingId={meeting.id}
-                    organizerId={meeting.bookedBy.id}
                     isOrganizerOrAdmin={canEdit}
                     currentUserId={user?.id}
                     previousMeetingId={meeting.previousMeetingId}

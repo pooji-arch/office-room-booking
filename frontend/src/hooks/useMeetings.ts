@@ -173,13 +173,6 @@ export function useRemoveParticipant() {
   })
 }
 
-export function useResendParticipantInvite() {
-  return useMutation({
-    mutationFn: ({ meetingId, participantId }: { meetingId: string; participantId: string }) =>
-      meetingsService.resendParticipantInvite(meetingId, participantId),
-  })
-}
-
 export function useAgendaItems(id: string | undefined) {
   return useQuery({
     queryKey: meetingKeys.agendaItems(id ?? ""),

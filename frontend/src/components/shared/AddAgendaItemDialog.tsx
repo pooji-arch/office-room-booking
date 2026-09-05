@@ -5,13 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -21,39 +14,28 @@ import {
 import { useAddAgendaItem, useUpdateAgendaItem } from "@/hooks/useMeetings"
 import type { AgendaItem } from "@/types"
 
-export interface AgendaAssignee {
-  id: string
-  name: string
-  email?: string
-}
-
 export function AddAgendaItemDialog({
   meetingId,
   open,
   onOpenChange,
   agendaItem,
-  eligibleAssignees,
 }: {
   meetingId: string
   open: boolean
   onOpenChange: (open: boolean) => void
   agendaItem?: AgendaItem
-  // Scoped to the meeting's own organizer + participants — someone who
-  // isn't attending shouldn't be assignable to an agenda topic they'll
-  // never hear discussed.
-  eligibleAssignees: AgendaAssignee[]
 }) {
   const isEditMode = !!agendaItem
   const addAgendaItem = useAddAgendaItem()
   const updateAgendaItem = useUpdateAgendaItem()
   const [topic, setTopic] = useState("")
-  const [ownerId, setOwnerId] = useState("")
+  const [ownerName, setOwnerName] = useState("")
   const [allottedMinutes, setAllottedMinutes] = useState("10")
 
   useEffect(() => {
     if (!open) return
     setTopic(agendaItem?.topic ?? "")
-    setOwnerId(agendaItem?.ownerId ?? "")
+    setOwnerName(agendaItem?.ownerName ?? "")
     setAllottedMinutes(String(agendaItem?.allottedMinutes ?? 10))
   }, [open, agendaItem])
 
@@ -71,7 +53,7 @@ export function AddAgendaItemDialog({
           agendaItemId: agendaItem.id,
           input: {
             topic: topic.trim(),
-            ownerId: ownerId || undefined,
+            ownerName: ownerName.trim() || undefined,
             allottedMinutes: Number(allottedMinutes) || 10,
           },
         })
@@ -81,7 +63,7 @@ export function AddAgendaItemDialog({
           meetingId,
           input: {
             topic: topic.trim(),
-            ownerId: ownerId || undefined,
+            ownerName: ownerName.trim() || undefined,
             allottedMinutes: Number(allottedMinutes) || 10,
           },
         })
@@ -108,19 +90,11 @@ export function AddAgendaItemDialog({
 
           <div>
             <Label className="mb-1.5">Owner (optional)</Label>
-            <Select value={ownerId} onValueChange={setOwnerId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="No owner assigned" />
-              </SelectTrigger>
-              <SelectContent>
-                {eligibleAssignees.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name}
-                    {u.email ? ` — ${u.email}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              value={ownerName}
+              onChange={(e) => setOwnerName(e.target.value)}
+              placeholder="Who's presenting this topic"
+            />
           </div>
 
           <div>

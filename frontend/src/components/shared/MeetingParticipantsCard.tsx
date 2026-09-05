@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { BellRing, Check, Loader2, UserPlus, Users, X } from "lucide-react"
+import { Check, Loader2, UserPlus, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatusBadge } from "@/components/shared/StatusBadge"
@@ -11,7 +11,6 @@ import {
   useMeeting,
   useMeetingParticipants,
   useRemoveParticipant,
-  useResendParticipantInvite,
   useUpdateParticipantRsvp,
 } from "@/hooks/useMeetings"
 import { formatDateMedium } from "@/lib/format"
@@ -19,13 +18,11 @@ import type { MeetingParticipant } from "@/types"
 
 export function MeetingParticipantsCard({
   meetingId,
-  organizerId,
   isOrganizerOrAdmin,
   currentUserId,
   previousMeetingId,
 }: {
   meetingId: string
-  organizerId: string
   isOrganizerOrAdmin: boolean
   currentUserId: string | undefined
   previousMeetingId?: string
@@ -37,7 +34,6 @@ export function MeetingParticipantsCard({
   const [removingParticipant, setRemovingParticipant] = useState<MeetingParticipant | undefined>(undefined)
   const updateRsvp = useUpdateParticipantRsvp()
   const removeParticipant = useRemoveParticipant()
-  const resendInvite = useResendParticipantInvite()
 
   async function handleRsvp(participant: MeetingParticipant, rsvpStatus: "ACCEPTED" | "DECLINED") {
     try {
@@ -45,15 +41,6 @@ export function MeetingParticipantsCard({
       toast.success(rsvpStatus === "ACCEPTED" ? "You accepted the invite" : "You declined the invite")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update your RSVP")
-    }
-  }
-
-  async function handleInvite(participant: MeetingParticipant) {
-    try {
-      await resendInvite.mutateAsync({ meetingId, participantId: participant.id })
-      toast.success(`Invite reminder sent to ${participant.name}`)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send invite reminder")
     }
   }
 
@@ -135,28 +122,15 @@ export function MeetingParticipantsCard({
                     <StatusBadge status={p.rsvpStatus} />
 
                     {isOrganizerOrAdmin && (
-                      <>
-                        {p.rsvpStatus !== "ACCEPTED" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleInvite(p)}
-                            disabled={resendInvite.isPending}
-                          >
-                            <BellRing className="size-3.5" />
-                            Invite
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-destructive text-destructive hover:bg-destructive/10"
-                          onClick={() => setRemovingParticipant(p)}
-                        >
-                          <X className="size-3.5" />
-                          Remove
-                        </Button>
-                      </>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-destructive text-destructive hover:bg-destructive/10"
+                        onClick={() => setRemovingParticipant(p)}
+                      >
+                        <X className="size-3.5" />
+                        Remove
+                      </Button>
                     )}
 
                     {isMe && p.rsvpStatus !== "ACCEPTED" && (
@@ -189,15 +163,7 @@ export function MeetingParticipantsCard({
         </CardContent>
 
         {isOrganizerOrAdmin && (
-          <AddParticipantDialog
-            meetingId={meetingId}
-            open={showAddDialog}
-            onOpenChange={setShowAddDialog}
-            existingParticipantIds={[
-              organizerId,
-              ...(participants ?? []).map((p) => p.profileId).filter((id): id is string => !!id),
-            ]}
-          />
+          <AddParticipantDialog meetingId={meetingId} open={showAddDialog} onOpenChange={setShowAddDialog} />
         )}
 
         <ConfirmDialog

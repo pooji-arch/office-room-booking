@@ -117,19 +117,23 @@ export interface RescheduleMeetingInput {
 }
 
 export interface AddParticipantInput {
-  profileId: string
+  // Either a real profile (e.g. carrying a participant forward onto a
+  // follow-up meeting) or a free-text name typed into Add Participant —
+  // never both.
+  profileId?: string
+  externalName?: string
   role?: ParticipantRole
 }
 
 export interface AddAgendaItemInput {
   topic: string
-  ownerId?: string
+  ownerName?: string
   allottedMinutes?: number
 }
 
 export interface UpdateAgendaItemInput {
   topic?: string
-  ownerId?: string
+  ownerName?: string
   allottedMinutes?: number
 }
 
@@ -143,7 +147,7 @@ export interface AddMinutesItemInput {
 export interface AddActionItemInput {
   title: string
   description?: string
-  ownerId?: string
+  ownerName?: string
   dueDate?: string
   minutesItemId?: string
   priority?: ActionItemPriority
@@ -152,7 +156,7 @@ export interface AddActionItemInput {
 export interface UpdateActionItemInput {
   title?: string
   description?: string
-  ownerId?: string
+  ownerName?: string
   dueDate?: string
   priority?: ActionItemPriority
 }
@@ -184,7 +188,6 @@ export interface MeetingsService {
   addParticipant(meetingId: string, input: AddParticipantInput): Promise<MeetingParticipant>
   updateParticipantRsvp(meetingId: string, participantId: string, rsvpStatus: RsvpStatus): Promise<MeetingParticipant>
   removeParticipant(meetingId: string, participantId: string): Promise<void>
-  resendParticipantInvite(meetingId: string, participantId: string): Promise<void>
   listAgendaItems(meetingId: string): Promise<AgendaItem[]>
   addAgendaItem(meetingId: string, input: AddAgendaItemInput): Promise<AgendaItem>
   updateAgendaItem(meetingId: string, agendaItemId: string, input: UpdateAgendaItemInput): Promise<AgendaItem>
