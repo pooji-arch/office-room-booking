@@ -6,13 +6,12 @@
 -- genuinely different string that helper can't catch — so, same as the
 -- earlier "Development"/"development" cleanup, fix it at the data layer
 -- once rather than trying to algorithmically detect every such pair.
--- "Operations" is kept as the canonical spelling (plural, the more standard
--- department name).
+-- "Operation" is kept as the canonical spelling, per explicit instruction.
 
 UPDATE profiles
-SET department = 'Operations'
+SET department = 'Operation'
 WHERE department ILIKE 'operation' OR department ILIKE 'operations';
 
 UPDATE meetings
-SET department = 'Operations'
+SET department = 'Operation'
 WHERE department ILIKE 'operation' OR department ILIKE 'operations';
