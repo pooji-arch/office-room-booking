@@ -62,7 +62,7 @@ function barColorClass(status: ActionItemStatus) {
 // department — active-to-terminal ordering, one fixed color per status
 // (chart-6 for Pending Approval since it has no other solid-fill precedent
 // elsewhere; the other four reuse this app's own established status colors).
-const STATUS_SEGMENT_ORDER = ["CONFIRMED", "COMPLETED", "RESCHEDULED", "PENDING_APPROVAL", "CANCELLED"] as const
+const STATUS_SEGMENT_ORDER = ["CONFIRMED", "COMPLETED", "RESCHEDULED", "PENDING_APPROVAL", "CANCELLED", "DECLINED"] as const
 type StatusSegment = (typeof STATUS_SEGMENT_ORDER)[number]
 const STATUS_SEGMENT_LABEL: Record<StatusSegment, string> = {
   CONFIRMED: "Confirmed",
@@ -70,6 +70,7 @@ const STATUS_SEGMENT_LABEL: Record<StatusSegment, string> = {
   RESCHEDULED: "Rescheduled",
   PENDING_APPROVAL: "Pending Approval",
   CANCELLED: "Cancelled",
+  DECLINED: "Declined",
 }
 const STATUS_SEGMENT_BAR_CLASS: Record<StatusSegment, string> = {
   CONFIRMED: "bg-success",
@@ -77,6 +78,7 @@ const STATUS_SEGMENT_BAR_CLASS: Record<StatusSegment, string> = {
   RESCHEDULED: "bg-warning",
   PENDING_APPROVAL: "bg-chart-6",
   CANCELLED: "bg-destructive",
+  DECLINED: "bg-destructive",
 }
 
 // Rounds a bar chart's max value up to a "nice" axis ceiling (5, 10, 20, 50,

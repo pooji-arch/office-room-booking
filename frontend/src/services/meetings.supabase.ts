@@ -56,6 +56,7 @@ interface MeetingRow {
   pending_requested_at: string | null
   cancelled_at: string | null
   cancellation_reason: string | null
+  declined: boolean
   reassigned_at: string | null
   reassigned_by_name: string | null
   reassignment_reason: string | null
@@ -98,6 +99,7 @@ function mapMeeting(row: MeetingRow): Meeting {
     pendingRequestedAt: row.pending_requested_at ?? undefined,
     cancelledAt: row.cancelled_at ?? undefined,
     cancellationReason: row.cancellation_reason ?? undefined,
+    declined: row.declined,
     reassignedAt: row.reassigned_at ?? undefined,
     reassignedByName: row.reassigned_by_name ?? undefined,
     reassignmentReason: row.reassignment_reason ?? undefined,

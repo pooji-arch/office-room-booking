@@ -144,7 +144,8 @@ export function UserMeetingDetailsPage() {
 
         {meeting.status === "CANCELLED" && meeting.cancellationReason && (
           <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-            Cancelled{meeting.cancelledAt ? ` on ${new Date(meeting.cancelledAt).toLocaleDateString()}` : ""}
+            {meeting.declined ? "Declined" : "Cancelled"}
+            {meeting.cancelledAt ? ` on ${new Date(meeting.cancelledAt).toLocaleDateString()}` : ""}
             {meeting.cancellationReason ? `: ${meeting.cancellationReason}` : ""}
           </div>
         )}

@@ -11,6 +11,7 @@ function statusClasses(meeting: Meeting) {
   const status = meetingDisplayStatus(meeting)
   switch (status) {
     case "CANCELLED":
+    case "DECLINED":
       return "border-destructive/40 bg-destructive/15 text-destructive line-through"
     case "COMPLETED":
       return "border-primary/30 bg-primary/10 text-primary"

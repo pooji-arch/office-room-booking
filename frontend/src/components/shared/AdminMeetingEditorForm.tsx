@@ -202,7 +202,9 @@ export function AdminMeetingEditorForm({
         </Button>
         {meeting.status === "CANCELLED" && (
           <p className="text-center text-xs text-muted-foreground">
-            This meeting is cancelled and can no longer be edited.
+            {meeting.declined
+              ? "This booking was declined and can no longer be edited."
+              : "This meeting is cancelled and can no longer be edited."}
           </p>
         )}
       </CardContent>

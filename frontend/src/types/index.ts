@@ -88,6 +88,7 @@ export interface Meeting {
   pendingRequestedAt?: string
   cancelledAt?: string
   cancellationReason?: string
+  declined: boolean
   reassignedAt?: string
   reassignedByName?: string
   reassignmentReason?: string

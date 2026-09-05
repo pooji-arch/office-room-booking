@@ -96,8 +96,14 @@ export function matchesBucket(m: Meeting, bucket?: MeetingBucket) {
 // having reschedule history. rescheduledAt is set by both paths.
 export function meetingDisplayStatus(
   m: Meeting
-): "CONFIRMED" | "RESCHEDULED" | "CANCELLED" | "COMPLETED" | "PENDING_APPROVAL" {
-  if (m.status === "CANCELLED") return "CANCELLED"
+): "CONFIRMED" | "RESCHEDULED" | "CANCELLED" | "DECLINED" | "COMPLETED" | "PENDING_APPROVAL" {
+  // A cancelled meeting was genuinely confirmed, then called off. A declined
+  // one was a booking request that was never approved in the first place
+  // (rejected by an admin, or auto-declined once its start time passed with
+  // no decision) — both store status = 'CANCELLED' underneath (that's what
+  // already frees the room slot / locks the meeting, unchanged), declined
+  // is purely a display-layer distinction on top.
+  if (m.status === "CANCELLED") return m.declined ? "DECLINED" : "CANCELLED"
   // Checked before COMPLETED/RESCHEDULED: a pending request always wins,
   // since it means the live row doesn't yet reflect an admin-blessed state
   // (e.g. a pending reschedule already holds its new, possibly-past-looking
