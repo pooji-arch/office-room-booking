@@ -138,7 +138,6 @@ export function MeetingDetailsPage() {
                   <MeetingParticipantsCard
                     meetingId={meeting.id}
                     isOrganizerOrAdmin={isOrganizerOrAdmin}
-                    currentUserId={user?.id}
                     previousMeetingId={meeting.previousMeetingId}
                   />
                 </div>

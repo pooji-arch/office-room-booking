@@ -96,15 +96,6 @@ export function useReassignMeeting() {
   })
 }
 
-export function useTransferOrganizer() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, newOrganizerId }: { id: string; newOrganizerId: string }) =>
-      meetingsService.transferOrganizer(id, newOrganizerId),
-    onSuccess: () => invalidateMeetingRelated(qc),
-  })
-}
-
 export function useRescheduleMeeting() {
   const qc = useQueryClient()
   return useMutation({

@@ -548,26 +548,6 @@ export const supabaseMeetingsService: MeetingsService = {
     return mapMeeting(data as MeetingRow)
   },
 
-  async transferOrganizer(id, newOrganizerId: string) {
-    // Deliberately just booked_by_id + organizer_transferred_at — no
-    // reassigned_at/reassigned_by_name/reassignment_reason (those stay
-    // admin-reassignment-only, per migration 0023) and no rescheduled_at
-    // (nothing about the schedule changed). booked_by_name/email/phone
-    // aren't set here either; they're auto-synced from the new organizer's
-    // profile by the DB's own set_booking_snapshots trigger.
-    // organizer_transferred_at (migration 0025) is this transfer's own
-    // timestamp, driving both the "Transferred" badge and the new
-    // organizer's notification.
-    const { data, error } = await supabase
-      .from("meetings")
-      .update({ booked_by_id: newOrganizerId, organizer_transferred_at: new Date().toISOString() })
-      .eq("id", id)
-      .select("*")
-      .single()
-    if (error) throw friendlyError(error)
-    return mapMeeting(data as MeetingRow)
-  },
-
   async rescheduleMeeting(id, input: RescheduleMeetingInput) {
     // rescheduled_at (migration 0017), not reassigned_at — reassigned_at is
     // protected by a column-guard trigger that only an admin can write to

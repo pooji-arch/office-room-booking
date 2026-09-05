@@ -177,9 +177,6 @@ export interface MeetingsService {
     input: { purpose?: string; department?: string; type?: MeetingType; reviewDate?: string }
   ): Promise<Meeting>
   reassignMeeting(id: string, input: ReassignMeetingInput): Promise<Meeting>
-  // Organizer-initiated, unlike reassignMeeting (admin-only): just hands
-  // the meeting to someone else, no reassigned_at/reason stamp.
-  transferOrganizer(id: string, newOrganizerId: string): Promise<Meeting>
   rescheduleMeeting(id: string, input: RescheduleMeetingInput): Promise<Meeting>
   cancelMeeting(id: string, reason?: string): Promise<Meeting>
   resolveMeetingApproval(id: string, approve: boolean, note?: string): Promise<Meeting>

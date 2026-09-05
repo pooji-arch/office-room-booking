@@ -71,7 +71,6 @@ export function AddParticipantDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="PARTICIPANT">Participant</SelectItem>
-                <SelectItem value="CHAIR">Chair</SelectItem>
               </SelectContent>
             </Select>
           </div>

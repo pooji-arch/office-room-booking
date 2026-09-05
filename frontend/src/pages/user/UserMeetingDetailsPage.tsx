@@ -16,7 +16,6 @@ import { ReviewNextMeetingCard } from "@/components/shared/ReviewNextMeetingCard
 import { MeetingDetailTabs } from "@/components/shared/MeetingDetailTabs"
 import { MeetingHistoryList } from "@/components/shared/MeetingHistoryList"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
-import { TransferOrganizerDialog } from "@/components/shared/TransferOrganizerDialog"
 import {
   useActionItems,
   useCancelMeeting,
@@ -36,7 +35,6 @@ export function UserMeetingDetailsPage() {
   const { data: actionItems, isLoading: isLoadingActionItems } = useActionItems(id)
   const cancelMeeting = useCancelMeeting()
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
-  const [showTransferDialog, setShowTransferDialog] = useState(false)
 
   const { data: followUps } = useMeetings(
     { previousMeetingId: meeting?.id ?? "", pageSize: 1 },
@@ -135,9 +133,6 @@ export function UserMeetingDetailsPage() {
                 </Button>
               </>
             )}
-            <Button variant="outline" onClick={() => setShowTransferDialog(true)}>
-              Transfer Organizer
-            </Button>
           </div>
         )}
 
@@ -183,7 +178,6 @@ export function UserMeetingDetailsPage() {
                   <MeetingParticipantsCard
                     meetingId={meeting.id}
                     isOrganizerOrAdmin={canEdit}
-                    currentUserId={user?.id}
                     previousMeetingId={meeting.previousMeetingId}
                   />
                 </div>
@@ -238,13 +232,6 @@ export function UserMeetingDetailsPage() {
         destructive
         isLoading={cancelMeeting.isPending}
         onConfirm={confirmCancel}
-      />
-
-      <TransferOrganizerDialog
-        meetingId={meeting.id}
-        currentOrganizerId={meeting.bookedBy.id}
-        open={showTransferDialog}
-        onOpenChange={setShowTransferDialog}
       />
     </div>
   )
