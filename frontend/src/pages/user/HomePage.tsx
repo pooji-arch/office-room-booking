@@ -40,6 +40,7 @@ const LEGEND_ITEMS = [
   { label: "Rescheduled", dot: "bg-warning shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-warning/60" },
   { label: "Pending Approval", dot: "border-2 border-dashed border-chart-6" },
   { label: "Cancelled", dot: "bg-destructive shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-destructive/60" },
+  { label: "Declined", dot: "border-2 border-dotted border-destructive" },
 ] as const
 
 export function HomePage() {
