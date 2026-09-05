@@ -1,7 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1)
-const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5)
+const MINUTES = Array.from({ length: 60 }, (_, i) => i)
 
 function parse24h(value: string) {
   const [h, m] = value.split(":").map(Number)
