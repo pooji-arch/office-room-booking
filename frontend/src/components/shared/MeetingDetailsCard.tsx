@@ -2,6 +2,7 @@ import { Hash } from "lucide-react"
 import type { Meeting } from "@/types"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatDateLong, formatTimeRange } from "@/lib/format"
+import { typeDeptLabel } from "@/lib/meeting-buckets"
 import { useMeeting } from "@/hooks/useMeetings"
 
 interface FieldProps {
@@ -22,8 +23,6 @@ function Field({ label, value, span }: FieldProps) {
 export function MeetingDetailsCard({ meeting }: { meeting: Meeting }) {
   const { data: previousMeeting } = useMeeting(meeting.previousMeetingId)
 
-  const typeLabel = meeting.type.charAt(0) + meeting.type.slice(1).toLowerCase()
-
   return (
     <Card>
       <CardContent className="space-y-4 pt-5">
@@ -34,7 +33,7 @@ export function MeetingDetailsCard({ meeting }: { meeting: Meeting }) {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Purpose" value={meeting.purpose} span />
-          <Field label="Type / Department" value={meeting.department ? `${typeLabel} · ${meeting.department}` : typeLabel} />
+          <Field label="Type / Department" value={typeDeptLabel(meeting.type, meeting.department)} />
           <Field label="Date & Time" value={`${formatDateLong(meeting.date)} · ${formatTimeRange(meeting.startTime, meeting.endTime)}`} />
           <Field label="Room" value={`${meeting.roomName} · ${meeting.roomLocation}`} />
           {meeting.reviewDate && <Field label="Review Date" value={formatDateLong(meeting.reviewDate)} />}

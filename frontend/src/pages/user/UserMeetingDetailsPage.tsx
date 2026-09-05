@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/shared/EmptyState"
 import { DetailPageSkeleton } from "@/components/shared/PageSkeletons"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { MeetingDetailsCard } from "@/components/shared/MeetingDetailsCard"
+import { MeetingApprovalCard } from "@/components/shared/MeetingApprovalCard"
 import { MeetingParticipantsCard } from "@/components/shared/MeetingParticipantsCard"
 import { AgendaCard } from "@/components/shared/AgendaCard"
 import { MinutesCard } from "@/components/shared/MinutesCard"
@@ -79,8 +80,12 @@ export function UserMeetingDetailsPage() {
   async function confirmCancel() {
     if (!meeting) return
     try {
-      await cancelMeeting.mutateAsync({ id: meeting.id })
-      toast.success("Meeting cancelled")
+      const updated = await cancelMeeting.mutateAsync({ id: meeting.id })
+      toast.success(
+        updated.approvalStatus === "PENDING"
+          ? "Cancellation requested — awaiting admin approval"
+          : "Meeting cancelled"
+      )
       setShowCancelConfirm(false)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to cancel meeting")
@@ -107,25 +112,31 @@ export function UserMeetingDetailsPage() {
 
         {isOrganizer && !isFinal && (
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              className="border-destructive text-destructive hover:bg-destructive/10"
-              onClick={() => setShowCancelConfirm(true)}
-            >
-              Cancel Meeting
-            </Button>
-            {/* replace, not a plain push — see MeetingReschedulePage for why */}
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/meetings/${meeting.id}/reschedule`, { replace: true })}
-            >
-              Reschedule
-            </Button>
+            {meeting.approvalStatus !== "PENDING" && (
+              <>
+                <Button
+                  variant="outline"
+                  className="border-destructive text-destructive hover:bg-destructive/10"
+                  onClick={() => setShowCancelConfirm(true)}
+                >
+                  Cancel Meeting
+                </Button>
+                {/* replace, not a plain push — see MeetingReschedulePage for why */}
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/meetings/${meeting.id}/reschedule`, { replace: true })}
+                >
+                  Reschedule
+                </Button>
+              </>
+            )}
             <Button variant="outline" onClick={() => setShowTransferDialog(true)}>
               Transfer Organizer
             </Button>
           </div>
         )}
+
+        <MeetingApprovalCard meeting={meeting} isAdmin={false} />
 
         {existingFollowUp && (
           <p className="text-sm text-muted-foreground">Follow-up meeting: {existingFollowUp.code}</p>

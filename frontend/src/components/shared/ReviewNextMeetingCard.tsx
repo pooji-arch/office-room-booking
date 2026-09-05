@@ -50,6 +50,7 @@ export function ReviewNextMeetingCard({
       previousMeetingId: meeting.id,
       purpose: `Follow-up: ${meeting.title ?? meeting.purpose}`,
       department: meeting.department ?? "",
+      type: meeting.type,
     })
     if (meeting.reviewDate) params.set("date", meeting.reviewDate)
     navigate(`/rooms/${meeting.roomId}?${params.toString()}`)

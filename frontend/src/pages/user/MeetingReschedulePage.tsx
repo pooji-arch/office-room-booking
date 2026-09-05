@@ -61,11 +61,15 @@ export function MeetingReschedulePage() {
   async function onReschedule() {
     if (!meeting || !selectedSlot) return
     try {
-      await rescheduleMeeting.mutateAsync({
+      const updated = await rescheduleMeeting.mutateAsync({
         id: meeting.id,
         input: { date: dateStr, startTime: selectedSlot.start, endTime: selectedSlot.end },
       })
-      toast.success("Meeting rescheduled")
+      toast.success(
+        updated.approvalStatus === "PENDING"
+          ? "Reschedule requested — awaiting admin approval"
+          : "Meeting rescheduled"
+      )
       navigate(`/meetings/${meeting.id}`, { replace: true })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reschedule meeting")

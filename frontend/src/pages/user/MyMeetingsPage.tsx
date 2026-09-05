@@ -19,14 +19,9 @@ import { TableSkeleton } from "@/components/shared/TableSkeleton"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useMeetings } from "@/hooks/useMeetings"
 import { useAuth } from "@/hooks/useAuth"
-import { followUpLabel, meetingDisplayStatus } from "@/lib/meeting-buckets"
+import { followUpLabel, meetingDisplayStatus, typeDeptLabel } from "@/lib/meeting-buckets"
 import { formatDateMedium, formatTimeRange, initials } from "@/lib/format"
 import type { MeetingBucket } from "@/types"
-
-function typeDeptLabel(type: string, department?: string) {
-  const typeLabel = type.charAt(0) + type.slice(1).toLowerCase()
-  return department ? `${typeLabel} · ${department}` : typeLabel
-}
 
 export function MyMeetingsPage() {
   const navigate = useNavigate()
@@ -90,7 +85,7 @@ export function MyMeetingsPage() {
 
       <div className="rounded-xl border bg-card">
         {isLoading ? (
-          <Table className="table-fixed">
+          <Table className="hidden table-fixed md:table">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[34%]">Title</TableHead>
@@ -110,75 +105,122 @@ export function MyMeetingsPage() {
             action={<Button onClick={() => navigate("/")}>Find a Room</Button>}
           />
         ) : (
-          <Table className="table-fixed">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[34%]">Title</TableHead>
-                <TableHead className="w-[22%]">Date & Time</TableHead>
-                <TableHead className="w-[22%]">Organizer</TableHead>
-                <TableHead className="w-[14%]">Status</TableHead>
-                <TableHead className="w-[8%] text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data?.data.map((meeting) => (
-                <TableRow
-                  key={meeting.id}
-                  className="cursor-pointer"
-                  onClick={() => navigate(`/meetings/${meeting.id}`)}
-                >
-                  <TableCell className="whitespace-normal">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate font-medium">{meeting.title ?? meeting.purpose}</p>
-                      {followUpLabel(meeting.followUpNumber) && (
-                        <StatusBadge
-                          status="FOLLOWUP"
-                          tone="neutral"
-                          label={followUpLabel(meeting.followUpNumber)!}
-                        />
-                      )}
-                      {meeting.organizerTransferredAt && (
-                        <StatusBadge status="TRANSFERRED" tone="info" label="Transferred" />
-                      )}
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {typeDeptLabel(meeting.type, meeting.department)}
-                    </p>
-                  </TableCell>
-                  <TableCell className="whitespace-normal">
-                    <p>{formatDateMedium(meeting.date)}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {formatTimeRange(meeting.startTime, meeting.endTime)}
-                    </p>
-                  </TableCell>
-                  <TableCell className="whitespace-normal">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Avatar className="size-7 shrink-0">
-                        <AvatarFallback className="bg-accent text-xs text-accent-foreground">
-                          {initials(meeting.bookedBy.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="truncate">
-                        {meeting.bookedBy.id === user?.id ? "You" : meeting.bookedBy.name}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="whitespace-normal">
-                    <StatusBadge status={meetingDisplayStatus(meeting)} />
-                  </TableCell>
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => navigate(`/meetings/${meeting.id}`)}
-                    >
-                      <Eye className="size-4" />
-                    </Button>
-                  </TableCell>
+          <>
+            <Table className="hidden table-fixed md:table">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[34%]">Title</TableHead>
+                  <TableHead className="w-[22%]">Date & Time</TableHead>
+                  <TableHead className="w-[22%]">Organizer</TableHead>
+                  <TableHead className="w-[14%]">Status</TableHead>
+                  <TableHead className="w-[8%] text-right">Actions</TableHead>
                 </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data?.data.map((meeting) => (
+                  <TableRow
+                    key={meeting.id}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/meetings/${meeting.id}`)}
+                  >
+                    <TableCell className="whitespace-normal">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate font-medium">{meeting.title ?? meeting.purpose}</p>
+                        {followUpLabel(meeting.followUpNumber) && (
+                          <StatusBadge
+                            status="FOLLOWUP"
+                            tone="neutral"
+                            label={followUpLabel(meeting.followUpNumber)!}
+                          />
+                        )}
+                        {meeting.organizerTransferredAt && (
+                          <StatusBadge status="TRANSFERRED" tone="info" label="Transferred" />
+                        )}
+                      </div>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {typeDeptLabel(meeting.type, meeting.department)}
+                      </p>
+                    </TableCell>
+                    <TableCell className="whitespace-normal">
+                      <p>{formatDateMedium(meeting.date)}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {formatTimeRange(meeting.startTime, meeting.endTime)}
+                      </p>
+                    </TableCell>
+                    <TableCell className="whitespace-normal">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Avatar className="size-7 shrink-0">
+                          <AvatarFallback className="bg-accent text-xs text-accent-foreground">
+                            {initials(meeting.bookedBy.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="truncate">
+                          {meeting.bookedBy.id === user?.id ? "You" : meeting.bookedBy.name}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="whitespace-normal">
+                      <StatusBadge status={meetingDisplayStatus(meeting)} />
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => navigate(`/meetings/${meeting.id}`)}
+                      >
+                        <Eye className="size-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <div className="divide-y md:hidden">
+              {data?.data.map((meeting) => (
+                <button
+                  key={meeting.id}
+                  type="button"
+                  onClick={() => navigate(`/meetings/${meeting.id}`)}
+                  className="flex w-full flex-col gap-2 p-4 text-left"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate font-medium">{meeting.title ?? meeting.purpose}</p>
+                    <StatusBadge status={meetingDisplayStatus(meeting)} className="shrink-0" />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {followUpLabel(meeting.followUpNumber) && (
+                      <StatusBadge
+                        status="FOLLOWUP"
+                        tone="neutral"
+                        label={followUpLabel(meeting.followUpNumber)!}
+                      />
+                    )}
+                    {meeting.organizerTransferredAt && (
+                      <StatusBadge status="TRANSFERRED" tone="info" label="Transferred" />
+                    )}
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {typeDeptLabel(meeting.type, meeting.department)}
+                  </p>
+                  <p className="text-sm">
+                    {formatDateMedium(meeting.date)}
+                    <span className="text-muted-foreground"> · {formatTimeRange(meeting.startTime, meeting.endTime)}</span>
+                  </p>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Avatar className="size-6 shrink-0">
+                      <AvatarFallback className="bg-accent text-[10px] text-accent-foreground">
+                        {initials(meeting.bookedBy.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate text-sm text-muted-foreground">
+                      {meeting.bookedBy.id === user?.id ? "You" : meeting.bookedBy.name}
+                    </span>
+                  </div>
+                </button>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          </>
         )}
         {data && (
           <div className="p-4">

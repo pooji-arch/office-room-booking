@@ -17,6 +17,10 @@ dist-ssr/
 # Claude Code local runtime state
 .claude/*.lock
 
+# Local CLI tooling state (project links, version caches — machine-specific)
+.vercel/
+supabase/.temp/
+
 # Editor/OS
 .vscode/*
 !.vscode/extensions.json

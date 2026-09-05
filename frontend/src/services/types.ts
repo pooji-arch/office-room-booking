@@ -176,6 +176,7 @@ export interface MeetingsService {
   transferOrganizer(id: string, newOrganizerId: string): Promise<Meeting>
   rescheduleMeeting(id: string, input: RescheduleMeetingInput): Promise<Meeting>
   cancelMeeting(id: string, reason?: string): Promise<Meeting>
+  resolveMeetingApproval(id: string, approve: boolean, note?: string): Promise<Meeting>
   getMeetingHistory(meetingId: string): Promise<MeetingHistoryEntry[]>
   listParticipants(meetingId: string): Promise<MeetingParticipant[]>
   addParticipant(meetingId: string, input: AddParticipantInput): Promise<MeetingParticipant>

@@ -37,9 +37,12 @@ import { useUsers } from "@/hooks/useUsers"
 import { useAuth } from "@/hooks/useAuth"
 import { meetingsService } from "@/services/meetings"
 import { formatDateMedium, formatTimeRange, parseDateInputValue, toDateInputValue } from "@/lib/format"
-import { cn } from "@/lib/utils"
+import { MEETING_TYPE_OPTIONS } from "@/lib/meeting-buckets"
+import { cn, dedupeCaseInsensitive } from "@/lib/utils"
+import type { MeetingType } from "@/types"
 
 const schema = z.object({
+  type: z.enum(["TACTICAL", "STRATEGY", "INTERNAL", "OTHER"]),
   purpose: z.string().min(1, "Purpose is required"),
   department: z.string().min(1, "Department is required"),
 })
@@ -85,14 +88,14 @@ export function RoomDetailsPage() {
   const addParticipant = useAddParticipant()
 
   const departments = useMemo(
-    () =>
-      [...new Set((usersData?.data ?? []).map((u) => u.department).filter(Boolean))].sort() as string[],
+    () => dedupeCaseInsensitive((usersData?.data ?? []).map((u) => u.department).filter(Boolean) as string[]),
     [usersData]
   )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      type: (searchParams.get("type") as MeetingType | null) ?? "INTERNAL",
       purpose: searchParams.get("purpose") ?? "",
       department: searchParams.get("department") ?? "",
     },
@@ -113,6 +116,7 @@ export function RoomDetailsPage() {
         bookedById: user.id,
         purpose: values.purpose,
         department: values.department,
+        type: values.type,
         previousMeetingId,
       })
 
@@ -140,14 +144,17 @@ export function RoomDetailsPage() {
       // (Open/In Progress/Delayed/Done) is tracked and editable directly
       // from the follow-up meeting's Action Items History panel — see
       // ActionItemsCard's previous-meeting table.
+      const pending = meeting.approvalStatus === "PENDING"
       if (previousMeetingId) {
         toast.success(
           carryForwardFailed
             ? "Follow-up meeting booked, but participants couldn't be copied — check the Agenda & RSVPs tab."
-            : "Follow-up meeting booked — participants were carried forward."
+            : pending
+              ? "Follow-up meeting requested — awaiting admin approval. Participants were carried forward."
+              : "Follow-up meeting booked — participants were carried forward."
         )
       } else {
-        toast.success("Room booked")
+        toast.success(pending ? "Booking requested — awaiting admin approval" : "Room booked")
       }
       navigate(`/meetings/${meeting.id}`)
     } catch (err) {
@@ -282,6 +289,31 @@ export function RoomDetailsPage() {
                         </PopoverContent>
                       </Popover>
                     </div>
+
+                    <FormField
+                      control={form.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Meeting Type *</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {MEETING_TYPE_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <FormField
                       control={form.control}

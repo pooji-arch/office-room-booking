@@ -2,7 +2,9 @@ export type Role = "ADMIN" | "USER"
 export type UserStatus = "ACTIVE" | "INACTIVE"
 export type RoomStatus = "AVAILABLE" | "MAINTENANCE" | "UNAVAILABLE"
 export type MeetingStatus = "CONFIRMED" | "CANCELLED"
-export type MeetingType = "INTERNAL" | "CLIENT" | "REVIEW" | "OTHER"
+export type MeetingApprovalStatus = "PENDING" | "APPROVED"
+export type PendingMeetingAction = "BOOKING" | "RESCHEDULE" | "CANCELLATION"
+export type MeetingType = "TACTICAL" | "STRATEGY" | "INTERNAL" | "OTHER"
 export type ParticipantRole = "CHAIR" | "PARTICIPANT"
 export type RsvpStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "TENTATIVE"
 
@@ -78,6 +80,12 @@ export interface Meeting {
   followUpNumber: number
   attendees?: number
   status: MeetingStatus
+  approvalStatus: MeetingApprovalStatus
+  pendingAction?: PendingMeetingAction
+  pendingPreviousDate?: string
+  pendingPreviousStartTime?: string
+  pendingPreviousEndTime?: string
+  pendingRequestedAt?: string
   cancelledAt?: string
   cancellationReason?: string
   reassignedAt?: string
@@ -171,6 +179,9 @@ export type NotificationType =
   | "ACTION_ITEM_OVERDUE_DIGEST"
   | "MOM_PENDING_NUDGE"
   | "MEETING_ORGANIZER_CHANGED"
+  | "MEETING_REQUEST_PENDING"
+  | "MEETING_REQUEST_APPROVED"
+  | "MEETING_REQUEST_REJECTED"
 
 export interface Notification {
   id: string

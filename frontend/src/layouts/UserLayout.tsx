@@ -6,7 +6,6 @@ import { AppSidebar, type SidebarNavSection } from "@/components/shared/AppSideb
 import { Logo } from "@/components/shared/Logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/useAuth"
-import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed"
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications"
 import { useScrollRestoration } from "@/hooks/useScrollRestoration"
 
@@ -14,7 +13,6 @@ export function UserLayout() {
   const { logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [collapsed, setCollapsed] = useSidebarCollapsed()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { data: unreadCount } = useUnreadNotificationsCount()
   const mainRef = useRef<HTMLElement>(null)
@@ -45,10 +43,9 @@ export function UserLayout() {
     <div className="flex h-screen bg-background">
       <AppSidebar
         navItems={NAV_SECTIONS}
-        collapsed={collapsed}
-        onToggleCollapsed={() => setCollapsed((c) => !c)}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
+        alwaysOverlay
         footer={() => (
           <button
             onClick={handleLogout}
@@ -60,7 +57,7 @@ export function UserLayout() {
         )}
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4 lg:hidden">
+        <div className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4">
           <Button variant="ghost" size="icon-sm" onClick={() => setMobileOpen(true)}>
             <Menu className="size-5" />
           </Button>

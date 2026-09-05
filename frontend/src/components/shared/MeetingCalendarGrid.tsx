@@ -25,6 +25,8 @@ function statusClasses(meeting: Meeting) {
       return "border-primary/30 bg-primary/10 text-primary"
     case "RESCHEDULED":
       return "border-warning/40 bg-warning/15 text-warning-foreground"
+    case "PENDING_APPROVAL":
+      return "border-chart-6/40 bg-chart-6/15 text-chart-6 border-dashed"
     case "CONFIRMED":
     default:
       return "border-success/40 bg-success/15 text-success"

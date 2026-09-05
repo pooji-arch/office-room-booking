@@ -17,6 +17,7 @@ import { UsersManagementPage } from "@/pages/admin/UsersManagementPage"
 import { UserFormPage } from "@/pages/admin/UserFormPage"
 import { CalendarViewPage } from "@/pages/admin/CalendarViewPage"
 import { ManagementReportingPage } from "@/pages/admin/ManagementReportingPage"
+import { DepartmentsPage } from "@/pages/admin/DepartmentsPage"
 import { SettingsPage } from "@/pages/admin/SettingsPage"
 
 import { ProfilePage } from "@/pages/shared/ProfilePage"
@@ -46,7 +47,7 @@ export const router = createBrowserRouter([
             path: "/admin",
             element: <AdminLayout />,
             children: [
-              { index: true, element: <Navigate to="/admin/rooms" replace /> },
+              { index: true, element: <Navigate to="/admin/calendar" replace /> },
               { path: "rooms", element: <RoomsManagementPage /> },
               { path: "rooms/new", element: <RoomFormPage /> },
               { path: "rooms/:id/edit", element: <RoomFormPage /> },
@@ -59,8 +60,10 @@ export const router = createBrowserRouter([
               { path: "users/:id/edit", element: <UserFormPage /> },
               { path: "calendar", element: <CalendarViewPage /> },
               { path: "reports", element: <ManagementReportingPage /> },
+              { path: "departments", element: <DepartmentsPage /> },
               { path: "settings", element: <SettingsPage /> },
               { path: "profile", element: <ProfilePage /> },
+              { path: "notifications", element: <NotificationsPage /> },
             ],
           },
         ],

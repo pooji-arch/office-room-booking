@@ -48,6 +48,12 @@ interface MeetingRow {
   follow_up_number: number
   attendees: number | null
   status: Meeting["status"]
+  approval_status: Meeting["approvalStatus"]
+  pending_action: Meeting["pendingAction"] | null
+  pending_previous_date: string | null
+  pending_previous_start_time: string | null
+  pending_previous_end_time: string | null
+  pending_requested_at: string | null
   cancelled_at: string | null
   cancellation_reason: string | null
   reassigned_at: string | null
@@ -84,6 +90,12 @@ function mapMeeting(row: MeetingRow): Meeting {
     followUpNumber: row.follow_up_number,
     attendees: row.attendees ?? undefined,
     status: row.status,
+    approvalStatus: row.approval_status,
+    pendingAction: row.pending_action ?? undefined,
+    pendingPreviousDate: row.pending_previous_date ?? undefined,
+    pendingPreviousStartTime: row.pending_previous_start_time?.slice(0, 5) ?? undefined,
+    pendingPreviousEndTime: row.pending_previous_end_time?.slice(0, 5) ?? undefined,
+    pendingRequestedAt: row.pending_requested_at ?? undefined,
     cancelledAt: row.cancelled_at ?? undefined,
     cancellationReason: row.cancellation_reason ?? undefined,
     reassignedAt: row.reassigned_at ?? undefined,
@@ -582,6 +594,18 @@ export const supabaseMeetingsService: MeetingsService = {
       .eq("id", id)
       .select("*")
       .single()
+    if (error) throw friendlyError(error)
+    return mapMeeting(data as MeetingRow)
+  },
+
+  async resolveMeetingApproval(id, approve, note) {
+    // The DB does all the branching (what "approve"/"reject" actually
+    // applies differs by pending_action) — this just calls it.
+    const { data, error } = await supabase.rpc("resolve_meeting_approval", {
+      p_meeting_id: id,
+      p_approve: approve,
+      p_note: note ?? null,
+    })
     if (error) throw friendlyError(error)
     return mapMeeting(data as MeetingRow)
   },

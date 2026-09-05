@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { useMeeting, useCancelMeeting, useReassignMeeting, useUpdateMeeting } from "@/hooks/useMeetings"
 import { useActiveUsers } from "@/hooks/useUsers"
 import { useRoomAvailability, useRooms } from "@/hooks/useRooms"
 import { meetingDisplayStatus } from "@/lib/meeting-buckets"
 import { toDateInputValue } from "@/lib/format"
+import { dedupeCaseInsensitive, ensureIncluded } from "@/lib/utils"
+import type { MeetingType } from "@/types"
 
 type TimeRange = { start: string; end: string }
 
@@ -23,11 +25,25 @@ export function useAdminMeetingEditor(meetingId: string | undefined) {
   const [bookedById, setBookedById] = useState("")
   const [purpose, setPurpose] = useState("")
   const [department, setDepartment] = useState("")
+  const [type, setType] = useState<MeetingType>("INTERNAL")
   const [reason, setReason] = useState("")
   const [roomId, _setRoomId] = useState<string | null>(null)
   const [selectedDate, _setSelectedDate] = useState<Date | null>(null)
   const [selectedRange, setSelectedRange] = useState<TimeRange | null>(null)
   const [initializedForId, setInitializedForId] = useState<string | undefined>(undefined)
+
+  // Same source as the creator form — user profiles' own department field —
+  // plus this meeting's own current value if it's a stale variant that
+  // wouldn't otherwise match anything (so editing an old meeting doesn't
+  // render the select blank).
+  const departments = useMemo(
+    () =>
+      ensureIncluded(
+        dedupeCaseInsensitive((users?.data ?? []).map((u) => u.department).filter(Boolean) as string[]),
+        meeting?.department
+      ),
+    [users, meeting?.department]
+  )
 
   // Keyed to meeting.id, not to `meeting` itself: onSubmit fires reassign
   // and update as two sequential mutations, and reassign's own cache
@@ -43,6 +59,7 @@ export function useAdminMeetingEditor(meetingId: string | undefined) {
       setBookedById(meeting.bookedBy.id)
       setPurpose(meeting.purpose)
       setDepartment(meeting.department ?? "")
+      setType(meeting.type)
       setInitializedForId(meeting.id)
     }
   }, [meeting, initializedForId])
@@ -113,10 +130,14 @@ export function useAdminMeetingEditor(meetingId: string | undefined) {
           },
         })
       }
-      if (purpose !== meeting.purpose || department !== (meeting.department ?? "")) {
+      if (
+        purpose !== meeting.purpose ||
+        department !== (meeting.department ?? "") ||
+        type !== meeting.type
+      ) {
         await updateMeeting.mutateAsync({
           id: meeting.id,
-          input: { purpose, department },
+          input: { purpose, department, type },
         })
       }
       toast.success("Meeting updated")
@@ -149,11 +170,23 @@ export function useAdminMeetingEditor(meetingId: string | undefined) {
     displayStatus,
     users,
     rooms,
+    departments,
     availability,
     isLoadingSlots,
     isSaving,
     onSubmit,
-    form: { bookedById, setBookedById, purpose, setPurpose, department, setDepartment, reason, setReason },
+    form: {
+      bookedById,
+      setBookedById,
+      purpose,
+      setPurpose,
+      department,
+      setDepartment,
+      type,
+      setType,
+      reason,
+      setReason,
+    },
     schedule: {
       effectiveRoomId,
       effectiveDateStr,

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 import {
   BarChart3,
+  Bell,
+  Building2,
   CalendarDays,
   DoorOpen,
   LogOut,
@@ -25,6 +27,7 @@ import {
 import { initials } from "@/lib/format"
 import { useAuth } from "@/hooks/useAuth"
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed"
+import { useUnreadNotificationsCount } from "@/hooks/useNotifications"
 import { useScrollRestoration } from "@/hooks/useScrollRestoration"
 
 export function AdminLayout() {
@@ -33,6 +36,7 @@ export function AdminLayout() {
   const location = useLocation()
   const [collapsed, setCollapsed] = useSidebarCollapsed()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { data: unreadCount } = useUnreadNotificationsCount()
   const mainRef = useRef<HTMLElement>(null)
   useScrollRestoration(mainRef)
 
@@ -43,7 +47,9 @@ export function AdminLayout() {
         { to: "/admin/meetings", label: "Meetings", icon: Presentation },
         { to: "/admin/calendar", label: "Calendar", icon: CalendarDays },
         { to: "/admin/reports", label: "Reports", icon: BarChart3 },
+        { to: "/admin/departments", label: "Departments", icon: Building2 },
         { to: "/admin/users", label: "Users", icon: Users },
+        { to: "/admin/notifications", label: "Notifications", icon: Bell, badge: unreadCount },
         { to: "/admin/settings", label: "Settings", icon: Settings },
       ],
     },

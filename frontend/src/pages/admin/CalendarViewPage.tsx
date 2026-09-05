@@ -12,12 +12,22 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { MeetingCalendarGrid } from "@/components/shared/MeetingCalendarGrid"
+import { RoomsWeekTimeline } from "@/components/shared/RoomsWeekTimeline"
 import { MeetingDetailsDialogBody } from "@/components/shared/MeetingDetailsDialogBody"
 import { useMeetings } from "@/hooks/useMeetings"
 import { useRooms } from "@/hooks/useRooms"
+import { useActiveUsers } from "@/hooks/useUsers"
 import { getWeekDays } from "@/lib/week"
 import { formatDateShort, parseDateInputValue, toDateInputValue } from "@/lib/format"
+import { cn, dedupeCaseInsensitive } from "@/lib/utils"
+
+const LEGEND_ITEMS = [
+  { label: "Confirmed", dot: "bg-success shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-success/60" },
+  { label: "Completed", dot: "bg-primary shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-primary/60" },
+  { label: "Rescheduled", dot: "bg-warning shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-warning/60" },
+  { label: "Pending Approval", dot: "border-2 border-dashed border-chart-6" },
+  { label: "Cancelled", dot: "bg-destructive shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-destructive/60" },
+] as const
 
 export function CalendarViewPage() {
   const navigate = useNavigate()
@@ -28,6 +38,8 @@ export function CalendarViewPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const view = (searchParams.get("view") as "week" | "day" | null) ?? "week"
   const roomId = searchParams.get("roomId") ?? "all"
+  const approvalFilter = (searchParams.get("approval") as "APPROVED" | "PENDING" | null) ?? "all"
+  const departmentFilter = searchParams.get("department") ?? "all"
   // Kept as a string, not just a derived Date, so useMemo below can depend
   // on a value that's actually stable across re-renders — a `new Date()`
   // recreated inline every render would otherwise defeat the memoization
@@ -63,7 +75,20 @@ export function CalendarViewPage() {
     updateParams({ roomId: v === "all" ? "" : v })
   }
 
+  function setApprovalFilter(v: "all" | "APPROVED" | "PENDING") {
+    updateParams({ approval: v === "all" ? "" : v })
+  }
+
+  function setDepartmentFilter(v: string) {
+    updateParams({ department: v === "all" ? "" : v })
+  }
+
   const { data: rooms } = useRooms({ pageSize: 100 })
+  const { data: activeUsers } = useActiveUsers()
+  const departments = useMemo(
+    () => dedupeCaseInsensitive((activeUsers?.data ?? []).map((u) => u.department).filter(Boolean) as string[]),
+    [activeUsers]
+  )
   const days = useMemo(
     () => (view === "week" ? getWeekDays(parseDateInputValue(dateStr)) : [dateStr]),
     [dateStr, view]
@@ -74,6 +99,11 @@ export function CalendarViewPage() {
     dateFrom: days[0],
     dateTo: days[days.length - 1],
     pageSize: 200,
+  })
+  const visibleMeetings = (data?.data ?? []).filter((m) => {
+    if (approvalFilter !== "all" && m.approvalStatus !== approvalFilter) return false
+    if (departmentFilter !== "all" && (m.department ?? "").toLowerCase() !== departmentFilter.toLowerCase()) return false
+    return true
   })
 
   function shift(days_: number) {
@@ -89,9 +119,19 @@ export function CalendarViewPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold tracking-tight">Calendar View</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h1 className="text-2xl font-extrabold tracking-tight">Calendar View</h1>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          {LEGEND_ITEMS.map((item) => (
+            <div key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className={cn("size-2.5 shrink-0 rounded-full", item.dot)} />
+              {item.label}
+            </div>
+          ))}
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
         <div className="space-y-4">
           <Card className="py-2">
             <CardContent className="px-2">
@@ -121,30 +161,44 @@ export function CalendarViewPage() {
                 </SelectContent>
               </Select>
 
-              <p className="pt-2 text-sm font-medium">Status</p>
-              <div className="space-y-1 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
-                  <span className="size-2.5 rounded-full bg-success shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-success/60" />
-                  Confirmed
-                </div>
-                <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
-                  <span className="size-2.5 rounded-full bg-primary shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-primary/60" />
-                  Completed
-                </div>
-                <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
-                  <span className="size-2.5 rounded-full bg-warning shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-warning/60" />
-                  Rescheduled
-                </div>
-                <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
-                  <span className="size-2.5 rounded-full bg-destructive shadow-[0_0_5px_0_var(--tw-shadow-color)] shadow-destructive/60" />{" "}
-                Cancelled
-                </div>
+              <p className="pt-2 text-sm font-medium">Booking Status</p>
+              <div className="flex rounded-lg border p-0.5">
+                {(["all", "APPROVED", "PENDING"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setApprovalFilter(v)}
+                    className={cn(
+                      "flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                      approvalFilter === v
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {v === "all" ? "All" : v === "APPROVED" ? "Approved" : "Pending"}
+                  </button>
+                ))}
               </div>
+
+              <p className="pt-2 text-sm font-medium">Department</p>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon-sm" onClick={() => shift(-1)}>
@@ -173,9 +227,10 @@ export function CalendarViewPage() {
             </div>
           </div>
 
-          <MeetingCalendarGrid
+          <RoomsWeekTimeline
+            rooms={roomId === "all" ? (rooms?.data ?? []) : (rooms?.data ?? []).filter((r) => r.id === roomId)}
             days={days}
-            meetings={data?.data ?? []}
+            meetings={visibleMeetings}
             onMeetingClick={(m) => setSelectedMeetingId(m.id)}
             emptyHint="No meetings in this range."
           />

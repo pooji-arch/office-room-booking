@@ -12,7 +12,7 @@ export function MeetingDetailTabs({ tabs }: { tabs: MeetingDetailTab[] }) {
     <Tabs defaultValue={tabs[0]?.value}>
       <TabsList className="w-full">
         {tabs.map((tab) => (
-          <TabsTrigger key={tab.value} value={tab.value} className="flex-1">
+          <TabsTrigger key={tab.value} value={tab.value} className="min-w-0 flex-1 truncate px-1 text-xs sm:px-1.5 sm:text-sm">
             {tab.label}
           </TabsTrigger>
         ))}

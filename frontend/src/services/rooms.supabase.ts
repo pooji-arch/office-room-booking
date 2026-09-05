@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient"
 import type { Room, RoomAvailability } from "@/types"
 import type { ListRoomsParams, RoomInput, RoomsService } from "./types"
+import { dedupeCaseInsensitive } from "@/lib/utils"
 
 const BUCKET = "room-images"
 
@@ -104,7 +105,7 @@ export const supabaseRoomsService: RoomsService = {
   async listRoomLocations() {
     const { data, error } = await supabase.from("rooms").select("location").is("deleted_at", null)
     if (error) throw new Error(error.message)
-    return Array.from(new Set((data ?? []).map((r) => r.location as string))).sort()
+    return dedupeCaseInsensitive((data ?? []).map((r) => r.location as string))
   },
 
   async getRoomAvailability(id, date, excludeBookingId) {

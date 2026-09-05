@@ -5,15 +5,21 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   Bell,
+  BellOff,
+  BellRing,
   CalendarClock,
+  CheckCircle2,
   CheckSquare,
   ClipboardCheck,
   Clock,
   FileClock,
+  Loader2,
+  ShieldQuestion,
   UserPlus,
   XCircle,
   type LucideIcon,
 } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -24,6 +30,7 @@ import {
   useNotifications,
   useUnreadNotificationsCount,
 } from "@/hooks/useNotifications"
+import { usePushNotifications } from "@/hooks/usePushNotifications"
 import { formatRelativeTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Notification, NotificationType } from "@/types"
@@ -42,6 +49,9 @@ const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   ACTION_ITEM_OVERDUE_DIGEST: AlertTriangle,
   MOM_PENDING_NUDGE: FileClock,
   MEETING_ORGANIZER_CHANGED: ArrowLeftRight,
+  MEETING_REQUEST_PENDING: ShieldQuestion,
+  MEETING_REQUEST_APPROVED: CheckCircle2,
+  MEETING_REQUEST_REJECTED: XCircle,
 }
 
 function NotificationCard({
@@ -78,6 +88,39 @@ function NotificationCard({
   )
 }
 
+function PushNotificationToggle() {
+  const push = usePushNotifications()
+
+  if (!push.supported || push.permission === "denied") return null
+
+  async function handleClick() {
+    try {
+      if (push.isSubscribed) {
+        await push.disable()
+        toast.success("Browser notifications turned off")
+      } else {
+        await push.enable()
+        toast.success("Browser notifications turned on")
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't update browser notifications")
+    }
+  }
+
+  return (
+    <Button variant="outline" size="sm" disabled={push.isLoading} onClick={handleClick}>
+      {push.isLoading ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : push.isSubscribed ? (
+        <BellOff className="size-4" />
+      ) : (
+        <BellRing className="size-4" />
+      )}
+      {push.isSubscribed ? "Turn off browser alerts" : "Enable browser alerts"}
+    </Button>
+  )
+}
+
 export function NotificationsPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
@@ -95,14 +138,17 @@ export function NotificationsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold tracking-tight">Notifications</h1>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!unreadCount || markAllRead.isPending}
-          onClick={() => markAllRead.mutate()}
-        >
-          Mark all as read
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <PushNotificationToggle />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!unreadCount || markAllRead.isPending}
+            onClick={() => markAllRead.mutate()}
+          >
+            Mark all as read
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (

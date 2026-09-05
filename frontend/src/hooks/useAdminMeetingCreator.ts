@@ -1,10 +1,12 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import { useCreateMeeting } from "@/hooks/useMeetings"
 import { useActiveUsers } from "@/hooks/useUsers"
 import { useRoomAvailability, useRooms } from "@/hooks/useRooms"
 import { useAuth } from "@/hooks/useAuth"
 import { toDateInputValue } from "@/lib/format"
+import { dedupeCaseInsensitive } from "@/lib/utils"
+import type { MeetingType } from "@/types"
 
 type TimeRange = { start: string; end: string }
 
@@ -19,10 +21,20 @@ export function useAdminMeetingCreator() {
   const { data: rooms } = useRooms({ pageSize: 100 })
   const createMeeting = useCreateMeeting()
 
+  // Sourced from user profiles' own department field (admin-curated at
+  // account creation) rather than free text typed at booking time — the
+  // whole point is to stop new department name variants ("Operation" vs
+  // "Operations", "development" vs "Development") from ever being created.
+  const departments = useMemo(
+    () => dedupeCaseInsensitive((users?.data ?? []).map((u) => u.department).filter(Boolean) as string[]),
+    [users]
+  )
+
   const [bookedById, setBookedById] = useState(user?.id ?? "")
   const [roomId, _setRoomId] = useState("")
   const [purpose, setPurpose] = useState("")
   const [department, setDepartment] = useState("")
+  const [type, setType] = useState<MeetingType>("INTERNAL")
   const [selectedDate, _setSelectedDate] = useState(new Date())
   const [selectedRange, setSelectedRange] = useState<TimeRange | null>(null)
 
@@ -74,6 +86,7 @@ export function useAdminMeetingCreator() {
         bookedById,
         purpose: purpose.trim(),
         department: department.trim(),
+        type,
       })
       toast.success("Meeting booked")
       return meeting.id
@@ -86,11 +99,23 @@ export function useAdminMeetingCreator() {
   return {
     users,
     rooms,
+    departments,
     availability,
     isLoadingSlots,
     isSaving,
     onSubmit,
-    form: { bookedById, setBookedById, roomId, setRoomId, purpose, setPurpose, department, setDepartment },
+    form: {
+      bookedById,
+      setBookedById,
+      roomId,
+      setRoomId,
+      purpose,
+      setPurpose,
+      department,
+      setDepartment,
+      type,
+      setType,
+    },
     schedule: { selectedDate, setSelectedDate, selectedRange, setSelectedRange, dateStr },
   }
 }

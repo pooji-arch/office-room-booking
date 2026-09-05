@@ -94,7 +94,7 @@ export function LoginPage() {
   // Google exchange below completing — send them where they belong.
   useEffect(() => {
     if (user) {
-      navigate(user.role === "ADMIN" ? "/admin/rooms" : "/", { replace: true })
+      navigate(user.role === "ADMIN" ? "/admin/calendar" : "/", { replace: true })
     }
   }, [user, navigate])
 
@@ -174,7 +174,7 @@ export function LoginPage() {
     try {
       const loggedInUser = await login(values.email, values.password)
       toast.success(`Welcome back, ${loggedInUser.name.split(" ")[0]}`)
-      navigate(loggedInUser.role === "ADMIN" ? "/admin/rooms" : "/", { replace: true })
+      navigate(loggedInUser.role === "ADMIN" ? "/admin/calendar" : "/", { replace: true })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign in failed")
     } finally {

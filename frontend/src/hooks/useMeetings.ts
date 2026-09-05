@@ -123,6 +123,15 @@ export function useCancelMeeting() {
   })
 }
 
+export function useResolveMeetingApproval() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, approve, note }: { id: string; approve: boolean; note?: string }) =>
+      meetingsService.resolveMeetingApproval(id, approve, note),
+    onSuccess: () => invalidateMeetingRelated(qc),
+  })
+}
+
 export function useAddParticipant() {
   const qc = useQueryClient()
   return useMutation({

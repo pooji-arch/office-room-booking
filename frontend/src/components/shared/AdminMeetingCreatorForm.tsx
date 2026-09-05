@@ -16,7 +16,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TimeRangeInput } from "@/components/shared/TimeRangeInput"
 import type { useAdminMeetingCreator } from "@/hooks/useAdminMeetingCreator"
 import { formatDateMedium, formatTimeRange, toDateInputValue } from "@/lib/format"
+import { MEETING_TYPE_OPTIONS } from "@/lib/meeting-buckets"
 import { cn } from "@/lib/utils"
+import type { MeetingType } from "@/types"
 
 // The "Book a Meeting" form — admin's own dedicated page (MeetingCreatePage),
 // driven by useAdminMeetingCreator. Same field shape as
@@ -30,7 +32,7 @@ export function AdminMeetingCreatorForm({
   creator: ReturnType<typeof useAdminMeetingCreator>
   onCreated?: (meetingId: string) => void
 }) {
-  const { users, rooms, availability, isLoadingSlots, isSaving, onSubmit, form, schedule } = creator
+  const { users, rooms, departments, availability, isLoadingSlots, isSaving, onSubmit, form, schedule } = creator
   const [dateTimeOpen, setDateTimeOpen] = useState(false)
 
   async function handleBook() {
@@ -136,6 +138,22 @@ export function AdminMeetingCreatorForm({
           </Popover>
         </div>
 
+        <div>
+          <Label className="mb-1.5">Meeting Type *</Label>
+          <Select value={form.type} onValueChange={(v) => form.setType(v as MeetingType)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MEETING_TYPE_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="mb-1.5">Purpose *</Label>
@@ -143,7 +161,18 @@ export function AdminMeetingCreatorForm({
           </div>
           <div>
             <Label className="mb-1.5">Department *</Label>
-            <Input value={form.department} onChange={(e) => form.setDepartment(e.target.value)} />
+            <Select value={form.department} onValueChange={form.setDepartment}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select department" />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((dept) => (
+                  <SelectItem key={dept} value={dept}>
+                    {dept}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

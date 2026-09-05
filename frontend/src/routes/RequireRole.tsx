@@ -7,7 +7,7 @@ export function RequireRole({ allow }: { allow: Role[] }) {
 
   if (!user) return <Navigate to="/login" replace />
   if (!allow.includes(user.role)) {
-    return <Navigate to={user.role === "ADMIN" ? "/admin/rooms" : "/"} replace />
+    return <Navigate to={user.role === "ADMIN" ? "/admin/calendar" : "/"} replace />
   }
 
   return <Outlet />

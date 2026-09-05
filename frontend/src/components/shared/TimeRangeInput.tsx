@@ -65,7 +65,7 @@ export function TimeRangeInput({
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <Label className="mb-1.5" htmlFor="time-range-start">
             Start Time

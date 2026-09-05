@@ -1,5 +1,32 @@
-import type { Meeting, MeetingBucket } from "@/types"
+import type { Meeting, MeetingBucket, MeetingType } from "@/types"
 import { toMinutes } from "./business-hours"
+import { CHART_TONES, type BadgeTone } from "@/components/shared/StatusBadge"
+
+// Assigns each department a stable color from the shared categorical
+// palette, by its alphabetical position in the full department list — same
+// department always gets the same tone across the Departments page, the
+// Reports department chart, and the admin Calendar's department filter,
+// rather than each page picking colors independently.
+export function departmentTone(allDepartments: string[], department: string): BadgeTone {
+  const idx = allDepartments.indexOf(department)
+  return CHART_TONES[(idx < 0 ? 0 : idx) % CHART_TONES.length]
+}
+
+export const MEETING_TYPE_OPTIONS: { value: MeetingType; label: string }[] = [
+  { value: "TACTICAL", label: "Tactical" },
+  { value: "STRATEGY", label: "Strategy" },
+  { value: "INTERNAL", label: "Internal" },
+  { value: "OTHER", label: "Others" },
+]
+
+export function meetingTypeLabel(type: MeetingType): string {
+  return MEETING_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? type
+}
+
+export function typeDeptLabel(type: MeetingType, department?: string | null): string {
+  const typeLabel = meetingTypeLabel(type)
+  return department ? `${typeLabel} · ${department}` : typeLabel
+}
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
@@ -69,8 +96,13 @@ export function matchesBucket(m: Meeting, bucket?: MeetingBucket) {
 // having reschedule history. rescheduledAt is set by both paths.
 export function meetingDisplayStatus(
   m: Meeting
-): "CONFIRMED" | "RESCHEDULED" | "CANCELLED" | "COMPLETED" {
+): "CONFIRMED" | "RESCHEDULED" | "CANCELLED" | "COMPLETED" | "PENDING_APPROVAL" {
   if (m.status === "CANCELLED") return "CANCELLED"
+  // Checked before COMPLETED/RESCHEDULED: a pending request always wins,
+  // since it means the live row doesn't yet reflect an admin-blessed state
+  // (e.g. a pending reschedule already holds its new, possibly-past-looking
+  // date/time — it should never briefly read "Completed" before approval).
+  if (m.approvalStatus === "PENDING") return "PENDING_APPROVAL"
   if (isCompleted(m)) return "COMPLETED"
   if (m.reassignedAt || m.rescheduledAt) return "RESCHEDULED"
   return "CONFIRMED"

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { DetailPageSkeleton } from "@/components/shared/PageSkeletons"
 import { MeetingDetailsCard } from "@/components/shared/MeetingDetailsCard"
+import { MeetingApprovalCard } from "@/components/shared/MeetingApprovalCard"
 import { MeetingHistoryList } from "@/components/shared/MeetingHistoryList"
 import { MeetingParticipantsCard } from "@/components/shared/MeetingParticipantsCard"
 import { AgendaCard } from "@/components/shared/AgendaCard"
@@ -89,6 +90,8 @@ export function MeetingDetailsPage() {
             </Button>
           </div>
         )}
+
+        <MeetingApprovalCard meeting={meeting} isAdmin />
 
         {existingFollowUp && (
           <p className="text-sm text-muted-foreground">Follow-up meeting: {existingFollowUp.code}</p>

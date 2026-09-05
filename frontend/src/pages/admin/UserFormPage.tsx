@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/form"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { FormPageSkeleton } from "@/components/shared/PageSkeletons"
-import { useCreateUser, useResetPassword, useUpdateUser, useUser } from "@/hooks/useUsers"
+import { useActiveUsers, useCreateUser, useResetPassword, useUpdateUser, useUser } from "@/hooks/useUsers"
+import { dedupeCaseInsensitive, ensureIncluded } from "@/lib/utils"
 
 // +91 numbers must have exactly 10 digits after the prefix; any other "+"
 // country code just needs to be all digits after it — matches the same rule
@@ -144,6 +145,7 @@ export function UserFormPage() {
   const isEdit = !!id
   const navigate = useNavigate()
   const { data: user, isLoading: isLoadingUser } = useUser(id)
+  const { data: activeUsers } = useActiveUsers()
   const createUser = useCreateUser()
   const updateUser = useUpdateUser()
   const resetPassword = useResetPassword()
@@ -153,6 +155,21 @@ export function UserFormPage() {
 
   const originalPhoneRef = useRef<string | undefined>(undefined)
   const schema = useMemo(() => makeSchema(originalPhoneRef), [])
+
+  // Sourced from every existing user's own department, same as the
+  // department dropdowns on the meeting-booking forms — prevents this form
+  // from ever creating a new case/spelling variant of a department that
+  // already exists. Plus this user's own current value, so editing someone
+  // whose department predates this dropdown (a stale variant) doesn't
+  // render the select blank.
+  const departments = useMemo(
+    () =>
+      ensureIncluded(
+        dedupeCaseInsensitive((activeUsers?.data ?? []).map((u) => u.department).filter(Boolean) as string[]),
+        user?.department
+      ),
+    [activeUsers, user?.department]
+  )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -351,9 +368,20 @@ export function UserFormPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Department *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Engineering" {...field} />
-                      </FormControl>
+                      <Select value={field.value} onValueChange={ignoreSpuriousEmptySelectChange(field.onChange)}>
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select department" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {departments.map((dept) => (
+                            <SelectItem key={dept} value={dept}>
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
