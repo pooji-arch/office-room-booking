@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { DatePicker } from "@/components/shared/DatePicker"
+import { DateTimePicker } from "@/components/shared/DateTimePicker"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Pagination } from "@/components/shared/Pagination"
@@ -39,6 +39,8 @@ export function DepartmentsPage() {
   const search = searchParams.get("search") ?? ""
   const dateFrom = searchParams.get("dateFrom") ?? ""
   const dateTo = searchParams.get("dateTo") ?? ""
+  const timeFrom = searchParams.get("timeFrom") ?? ""
+  const timeTo = searchParams.get("timeTo") ?? ""
   const typeFilter = (searchParams.get("type") as MeetingType | null) ?? "all"
   const departmentKey = searchParams.get("department") ?? "all"
   const page = Number(searchParams.get("page") ?? "1")
@@ -62,6 +64,8 @@ export function DepartmentsPage() {
   const { data, isLoading } = useMeetings({
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
+    timeFrom: timeFrom || undefined,
+    timeTo: timeTo || undefined,
     pageSize: 500,
   })
 
@@ -124,7 +128,14 @@ export function DepartmentsPage() {
     totalPages,
   }
 
-  const hasActiveFilters = search !== "" || dateFrom !== "" || dateTo !== "" || typeFilter !== "all" || departmentKey !== "all"
+  const hasActiveFilters =
+    search !== "" ||
+    dateFrom !== "" ||
+    dateTo !== "" ||
+    timeFrom !== "" ||
+    timeTo !== "" ||
+    typeFilter !== "all" ||
+    departmentKey !== "all"
 
   function clearFilters() {
     setSearchParams({}, { replace: true })
@@ -176,18 +187,22 @@ export function DepartmentsPage() {
             className="w-full max-w-xs"
           />
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <DatePicker
-              value={dateFrom}
-              onChange={(v) => updateParams({ dateFrom: v, page: "1" })}
+            <DateTimePicker
+              date={dateFrom}
+              time={timeFrom}
+              onDateChange={(v) => updateParams({ dateFrom: v, page: "1" })}
+              onTimeChange={(v) => updateParams({ timeFrom: v, page: "1" })}
               placeholder="From"
-              className="w-[150px]"
+              className="w-[170px]"
             />
             <span>to</span>
-            <DatePicker
-              value={dateTo}
-              onChange={(v) => updateParams({ dateTo: v, page: "1" })}
+            <DateTimePicker
+              date={dateTo}
+              time={timeTo}
+              onDateChange={(v) => updateParams({ dateTo: v, page: "1" })}
+              onTimeChange={(v) => updateParams({ timeTo: v, page: "1" })}
               placeholder="To"
-              className="w-[150px]"
+              className="w-[170px]"
             />
           </div>
           <Select value={typeFilter} onValueChange={(v) => updateParams({ type: v === "all" ? "" : v, page: "1" })}>

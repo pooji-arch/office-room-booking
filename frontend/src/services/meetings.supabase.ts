@@ -438,6 +438,8 @@ export const supabaseMeetingsService: MeetingsService = {
     if (params.status) query = query.eq("status", params.status)
     if (params.dateFrom) query = query.gte("date", params.dateFrom)
     if (params.dateTo) query = query.lte("date", params.dateTo)
+    if (params.timeFrom) query = query.gte("start_time", params.timeFrom)
+    if (params.timeTo) query = query.lte("start_time", params.timeTo)
     if (params.search?.trim()) {
       const q = params.search.trim().replace(/[%_]/g, "")
       query = query.or(

@@ -78,6 +78,8 @@ export interface ListMeetingsParams extends ListParams {
   bucket?: MeetingBucket
   dateFrom?: string
   dateTo?: string
+  timeFrom?: string
+  timeTo?: string
 }
 
 export interface CreateMeetingInput {

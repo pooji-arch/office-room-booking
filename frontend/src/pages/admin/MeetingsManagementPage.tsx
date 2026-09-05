@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DatePicker } from "@/components/shared/DatePicker"
+import { DateTimePicker } from "@/components/shared/DateTimePicker"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Pagination } from "@/components/shared/Pagination"
@@ -45,6 +45,8 @@ export function MeetingsManagementPage() {
   const roomId = searchParams.get("roomId") ?? "all"
   const dateFrom = searchParams.get("dateFrom") ?? ""
   const dateTo = searchParams.get("dateTo") ?? ""
+  const timeFrom = searchParams.get("timeFrom") ?? ""
+  const timeTo = searchParams.get("timeTo") ?? ""
   const bucket = (searchParams.get("bucket") as MeetingBucket | null) ?? "all"
   const page = Number(searchParams.get("page") ?? "1")
   const pageSize = Number(searchParams.get("pageSize") ?? "10")
@@ -70,6 +72,8 @@ export function MeetingsManagementPage() {
     roomId: roomId === "all" ? undefined : roomId,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
+    timeFrom: timeFrom || undefined,
+    timeTo: timeTo || undefined,
     bucket,
     page,
     pageSize,
@@ -80,7 +84,13 @@ export function MeetingsManagementPage() {
   }
 
   const hasActiveFilters =
-    search !== "" || roomId !== "all" || dateFrom !== "" || dateTo !== "" || bucket !== "all"
+    search !== "" ||
+    roomId !== "all" ||
+    dateFrom !== "" ||
+    dateTo !== "" ||
+    timeFrom !== "" ||
+    timeTo !== "" ||
+    bucket !== "all"
 
   function clearFilters() {
     setSearchParams({}, { replace: true })
@@ -120,18 +130,22 @@ export function MeetingsManagementPage() {
           </SelectContent>
         </Select>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <DatePicker
-            value={dateFrom}
-            onChange={(v) => updateParams({ dateFrom: v, page: "1" })}
+          <DateTimePicker
+            date={dateFrom}
+            time={timeFrom}
+            onDateChange={(v) => updateParams({ dateFrom: v, page: "1" })}
+            onTimeChange={(v) => updateParams({ timeFrom: v, page: "1" })}
             placeholder="From"
-            className="w-[150px]"
+            className="w-[170px]"
           />
           <span>to</span>
-          <DatePicker
-            value={dateTo}
-            onChange={(v) => updateParams({ dateTo: v, page: "1" })}
+          <DateTimePicker
+            date={dateTo}
+            time={timeTo}
+            onDateChange={(v) => updateParams({ dateTo: v, page: "1" })}
+            onTimeChange={(v) => updateParams({ timeTo: v, page: "1" })}
             placeholder="To"
-            className="w-[150px]"
+            className="w-[170px]"
           />
         </div>
         <MeetingBucketFilter
