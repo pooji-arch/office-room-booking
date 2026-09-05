@@ -93,19 +93,21 @@ function DropdownMenuCheckboxItem({
       data-slot="dropdown-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        "relative flex cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "group/checkbox-item relative flex cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       checked={checked}
       {...props}
     >
+      {/* A real square checkbox, not just a bare tick — always visible,
+          filled/bordered like the app's own Checkbox component once
+          checked, rather than only appearing out of nowhere when active. */}
       <span
-        className="pointer-events-none absolute right-2 flex items-center justify-center"
+        className="pointer-events-none absolute right-2 flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input group-data-[state=checked]/checkbox-item:border-primary group-data-[state=checked]/checkbox-item:bg-primary group-data-[state=checked]/checkbox-item:text-primary-foreground"
         data-slot="dropdown-menu-checkbox-item-indicator"
       >
         <DropdownMenuPrimitive.ItemIndicator>
-          <CheckIcon
-          />
+          <CheckIcon className="size-3.5" />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}

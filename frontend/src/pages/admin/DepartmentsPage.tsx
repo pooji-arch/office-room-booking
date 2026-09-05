@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { Building2, X } from "lucide-react"
+import { Building2, ChevronDown, X } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   Table,
@@ -17,7 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { DateTimePicker } from "@/components/shared/DateTimePicker"
 import { SearchInput } from "@/components/shared/SearchInput"
@@ -42,7 +47,18 @@ export function DepartmentsPage() {
   const timeFrom = searchParams.get("timeFrom") ?? ""
   const timeTo = searchParams.get("timeTo") ?? ""
   const typeFilter = (searchParams.get("type") as MeetingType | null) ?? "all"
-  const departmentKey = searchParams.get("department") ?? "all"
+  const departmentsParam = searchParams.get("department")
+  // null = no filter (every department included) — the default, and also
+  // what checking every box collapses back to. "none" is a distinct
+  // sentinel from "no param at all": without it, unchecking the last
+  // department would produce an empty string, which updateParams treats as
+  // "delete this param," silently snapping back to "all" instead of
+  // actually showing zero departments (same fix already used for the Home
+  // page's Categories filter).
+  const selectedDepartments = useMemo(
+    () => (departmentsParam === "none" ? [] : departmentsParam ? departmentsParam.split(",") : null),
+    [departmentsParam]
+  )
   const page = Number(searchParams.get("page") ?? "1")
   const pageSize = Number(searchParams.get("pageSize") ?? "10")
   const debouncedSearch = useDebouncedValue(search)
@@ -103,7 +119,7 @@ export function DepartmentsPage() {
   const filtered = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase()
     return meetingsWithCanonicalDept
-      .filter(({ department }) => departmentKey === "all" || department === departmentKey)
+      .filter(({ department }) => selectedDepartments === null || selectedDepartments.includes(department))
       .filter(({ meeting }) => typeFilter === "all" || meeting.type === typeFilter)
       .filter(
         ({ meeting }) =>
@@ -116,7 +132,25 @@ export function DepartmentsPage() {
           ? b.meeting.startTime.localeCompare(a.meeting.startTime)
           : b.meeting.date.localeCompare(a.meeting.date)
       )
-  }, [meetingsWithCanonicalDept, departmentKey, typeFilter, debouncedSearch])
+  }, [meetingsWithCanonicalDept, selectedDepartments, typeFilter, debouncedSearch])
+
+  function toggleDepartment(dept: string) {
+    const current = selectedDepartments ?? allDepartmentLabels
+    const next = current.includes(dept) ? current.filter((d) => d !== dept) : [...current, dept]
+    updateParams({
+      department: next.length === allDepartmentLabels.length ? "" : next.length === 0 ? "none" : next.join(","),
+      page: "1",
+    })
+  }
+
+  const departmentsLabel =
+    selectedDepartments === null
+      ? "All Departments"
+      : selectedDepartments.length === 0
+        ? "No Departments"
+        : selectedDepartments.length === 1
+          ? selectedDepartments[0]
+          : `${selectedDepartments.length} selected`
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const clampedPage = Math.min(page, totalPages)
@@ -135,13 +169,18 @@ export function DepartmentsPage() {
     timeFrom !== "" ||
     timeTo !== "" ||
     typeFilter !== "all" ||
-    departmentKey !== "all"
+    departmentsParam !== null
 
   function clearFilters() {
     setSearchParams({}, { replace: true })
   }
 
-  const activeLabel = departmentKey === "all" ? "All Department" : departmentKey
+  const activeLabel =
+    selectedDepartments === null
+      ? "All Department"
+      : selectedDepartments.length === 1
+        ? selectedDepartments[0]
+        : `${selectedDepartments.length} Department${selectedDepartments.length === 1 ? "" : "s"}`
 
   return (
     <div className="space-y-6">
@@ -154,25 +193,29 @@ export function DepartmentsPage() {
         </p>
       </div>
 
-      <Tabs value={departmentKey} onValueChange={(v) => updateParams({ department: v === "all" ? "" : v, page: "1" })}>
-        <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
-          <TabsTrigger
-            value="all"
-            className="flex-none rounded-full border px-3 py-1.5 data-active:bg-primary data-active:text-primary-foreground"
-          >
-            All Departments
-          </TabsTrigger>
-          {allDepartmentLabels.map((dept) => (
-            <TabsTrigger
-              key={dept}
-              value={dept}
-              className="flex-none rounded-full border px-3 py-1.5 data-active:bg-primary data-active:text-primary-foreground"
-            >
-              {dept}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <div className="space-y-3">
+        <p className="text-sm font-medium">Department</p>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full max-w-xs justify-between font-normal">
+              {departmentsLabel}
+              <ChevronDown className="size-4 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]" align="start">
+            {allDepartmentLabels.map((dept) => (
+              <DropdownMenuCheckboxItem
+                key={dept}
+                checked={selectedDepartments === null || selectedDepartments.includes(dept)}
+                onCheckedChange={() => toggleDepartment(dept)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                {dept}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
