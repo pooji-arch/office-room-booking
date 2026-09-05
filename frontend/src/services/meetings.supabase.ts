@@ -57,6 +57,7 @@ interface MeetingRow {
   cancelled_at: string | null
   cancellation_reason: string | null
   declined: boolean
+  reschedule_declined: boolean
   reassigned_at: string | null
   reassigned_by_name: string | null
   reassignment_reason: string | null
@@ -100,6 +101,7 @@ function mapMeeting(row: MeetingRow): Meeting {
     cancelledAt: row.cancelled_at ?? undefined,
     cancellationReason: row.cancellation_reason ?? undefined,
     declined: row.declined,
+    rescheduleDeclined: row.reschedule_declined,
     reassignedAt: row.reassigned_at ?? undefined,
     reassignedByName: row.reassigned_by_name ?? undefined,
     reassignmentReason: row.reassignment_reason ?? undefined,

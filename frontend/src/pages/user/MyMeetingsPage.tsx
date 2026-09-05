@@ -136,6 +136,9 @@ export function MyMeetingsPage() {
                         {meeting.organizerTransferredAt && (
                           <StatusBadge status="TRANSFERRED" tone="info" label="Transferred" />
                         )}
+                        {meeting.rescheduleDeclined && (
+                          <StatusBadge status="DECLINED" tone="destructive" label="Reschedule Declined" />
+                        )}
                       </div>
                       <p className="truncate text-xs text-muted-foreground">
                         {typeDeptLabel(meeting.type, meeting.department)}
@@ -198,6 +201,9 @@ export function MyMeetingsPage() {
                     )}
                     {meeting.organizerTransferredAt && (
                       <StatusBadge status="TRANSFERRED" tone="info" label="Transferred" />
+                    )}
+                    {meeting.rescheduleDeclined && (
+                      <StatusBadge status="DECLINED" tone="destructive" label="Reschedule Declined" />
                     )}
                   </div>
                   <p className="truncate text-xs text-muted-foreground">

@@ -101,7 +101,12 @@ export function UserMeetingDetailsPage() {
           </Button>
           <h1 className="text-2xl font-extrabold tracking-tight">Meeting Details</h1>
         </div>
-        <StatusBadge status={displayStatus} />
+        <div className="flex items-center gap-2">
+          {meeting.rescheduleDeclined && (
+            <StatusBadge status="DECLINED" tone="destructive" label="Reschedule Declined" />
+          )}
+          <StatusBadge status={displayStatus} />
+        </div>
       </div>
 
       <div className="space-y-4">
